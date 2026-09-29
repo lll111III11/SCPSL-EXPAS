@@ -1,0 +1,298 @@
+================================================================================
+EXPAS 经验扩展插件系统 —— 指令使用方法
+  Experience, eXtended Plugins, Audio, and Status System
+正式 DLL: EXPAS.NP.dll      插件版本: v2.0.0-beta
+整理日期: 2026-09-29
+================================================================================
+
+【0. 先读这三条】
+
+  ① 所有 EXPAS 指令**只**注册在：RA 远程管理面板 + 服务器控制台。
+     玩家在游戏内**不能**执行任何 EXPAS 指令。
+
+  ② 主命令: EXPAS        别名: expsr / expr
+     通用语法: EXPAS <子命令> [参数...]
+     只输入 EXPAS（不带参数）→ 打印简略总览。
+     输入 EXPAS <关键字>（不是已知子命令时）→ 当作关键字做匹配，
+       例如 EXPAS se → 列出 set / setcfg / save。
+     也可以显式写:  EXPAS help [关键字]
+
+  ③ <玩家ID> 支持三种写法（写法开关都在 config.yml 里，可单独关闭）：
+       ① 局内序列 ID  —— RA 玩家列表里的短编号，例如 3      （需在线）
+       ② 玩家名       —— 可只写名字的一部分（模糊匹配）      （需在线）
+       ③ Steam64      —— 76561198000000000 或 76561198000000000@steam（离线也能改）
+     开关:  lookup_by_seq_id / lookup_by_name / lookup_by_steam / name_lookup_contains
+     模糊匹配命中多人时会报错，要求写得更精确。
+
+--------------------------------------------------------------------------------
+【1. 指令总览】
+--------------------------------------------------------------------------------
+  数据类
+    EXPAS set|add <玩家ID> <字段> <值>      改数值字段（字段见第 3 节）
+    EXPAS info <玩家ID>                    查等级/经验/伤害/击杀/积分/时长/锁定
+    EXPAS reset <玩家ID>                   清空该玩家全部数据
+    EXPAS save                             立即保存玩家数据 + 配置文件
+
+  等级类
+    EXPAS addlevel <玩家ID> <数量>          增加等级（可为负）
+    EXPAS restartlevel <玩家ID>             重置等级到 1 级（累计经验保留）
+    EXPAS xpfreeze [on|off]                冻结/解冻本回合经验增长（别名 freezexp）
+
+  锁定类
+    EXPAS lock <玩家ID> [0-3]              锁定（不带取值默认 2）
+    EXPAS unlock <玩家ID>                  解锁（= lock 0）
+    EXPAS full <玩家ID>                    惩罚锁定（= lock 1）
+
+  称号类
+    EXPAS title <玩家ID> <0|1|2|3> [文本]   称号三层策略（见 2.10）
+
+  音频类
+    EXPAS audio play <文件名>              播放音频（隐藏音箱，不生成假人）
+    EXPAS audio list                       列出 audio 目录可用音频 + 解码器状态
+    EXPAS audio stop                       停止当前播放
+    EXPAS audio call                       打印 audio_calls 声明（有哪些调用/什么效果）
+    EXPAS mvpmusic list                    列出音乐盒条目（文件存在/缺失）
+    EXPAS mvpmusic play <玩家ID>           手动试播该玩家的第一名音乐盒
+
+  自定义 UI 类
+    EXPAS layout list                      列出已载入布局 + 白名单
+    EXPAS layout reload                    重扫 layouts\ 目录（改完布局文件不用重启）
+    EXPAS layout info <玩家ID>             看该玩家存储的 / 实际生效的布局
+    EXPAS layout <玩家ID> <布局名>          给该玩家指定布局
+    EXPAS whitelist add|remove|list [Steam64]  自定义 UI 白名单（别名 wl）
+
+  配置类
+    EXPAS config                           打印当前主要配置值
+    EXPAS setcfg <键> <值>                 改配置并写回 config.yml（键见第 4 节）
+    EXPAS time <时区>                      改 HUD 时区（GMT+9 / 日本 / +8 / 8）
+    EXPAS line <1-4|level1|level2> <文本>   改 HUD 某一行文案
+    EXPAS custom add|clear|list [文本]      增/清/看 HUD 自定义行
+    EXPAS mvp <文本>                       回合结束 MVP 公告模板（空 = 关）
+    EXPAS top                              本回合排行榜
+    EXPAS api <0|1>                        开关本回合 API（ExpasApi）
+
+  维护类
+    EXPAS arsa [full]                      重新识别"除自己以外"的全部插件
+    EXPAS help [关键字]                     帮助 / 字段匹配（别名 ?）
+
+--------------------------------------------------------------------------------
+【2. 逐条详解】
+--------------------------------------------------------------------------------
+
+2.1  EXPAS set|add <玩家ID> <字段> <值>
+     set = 直接设为该值；add = 在当前值上增加（值可为负数）。
+     值支持小数。
+     旧式两参写法仍兼容:
+        EXPAS set <玩家> <等级>     等价于 set <玩家> level <等级>
+        EXPAS add <玩家> <经验>     等价于 add <玩家> exp <经验>
+
+     示例:
+        EXPAS set Steve level 225
+        EXPAS add Steve points 300
+        EXPAS add 76561198000000000 total_damage 1000
+
+2.2  EXPAS info <玩家ID>
+     输出: 昵称(Steam64) 在线/离线
+           等级 Lv.x  经验 a/b  累计经验 c
+           总伤害 d  总击杀 e  死亡 f  积分 g
+           游玩天数 h  今日游玩 i 秒  总游玩 j
+           锁定 k  待入账经验 l
+           经验冻结(本回合) 是/否
+
+2.3  EXPAS addlevel <玩家ID> <数量>
+     等级增加（可为负），结果自动夹在 1..MaxLevel。
+
+2.4  EXPAS restartlevel <玩家ID>
+     等级回 1、当前等级内经验清零、待入账清零；
+     累计经验 TotalExp **保留**。想全清用 EXPAS reset。
+
+2.5  EXPAS xpfreeze [on|off]       （别名 freezexp）
+     冻结本回合的经验增长。不带参数 = 切换。
+     on / 1 / 开 = 冻结；off / 0 / 关 = 解除。
+     冻结期间该回合不再获得任何经验；**下一回合自动恢复**。
+
+2.6  EXPAS reset <玩家ID>
+     清空该玩家全部数据（等级/经验/伤害/击杀/死亡/积分/游玩时长/天数/今日/锁定）。
+
+2.7  EXPAS lock <玩家ID> [取值]
+     取值: 0|none|无|解锁   1|punishment|惩罚   2|selfban|自助封禁|自愿
+           3|inactive|长期未上线
+     不带取值 → 默认 2（selfban）。
+     锁定模型与效果:
+        0 none        ✅  正常，一切照常记录
+        1 punishment  🚫  任何数据都不记录（等级/经验/伤害都不涨）
+        2 selfban     🔒  伤害与等级不涨，但经验进"待入账池"；
+                          解锁时把封禁期间的伤害与经验**一次性入账**（可能连升多级）
+        3 inactive    🕒  由 offline_days（默认 30 天）自动置位；
+                          玩家回来自动清回 0（不会覆盖 1 / 2）
+
+2.8  EXPAS unlock <玩家ID>     等价 lock 0，并把 selfban 期间的数据一次性入账。
+2.9  EXPAS full <玩家ID>       等价 lock 1（惩罚锁定）。
+
+2.10 EXPAS title <玩家ID> <0|1|2|3|clear|force|ifempty|none> [文本]
+     对 LabAPI 称号系统（Player.CustomInfo，即名字下方的灰字）做三层干预:
+        0 / off / none      不干预
+        1 / ifempty         层 1：只有玩家**本来没有**称号时才设
+        2 / force           层 2：**强制替换**成指定文本
+        3 / clear           层 3：**彻底清除**（清空该玩家的 CustomInfo，本指令忽略 [文本]）
+     例:
+        EXPAS title Steve 1 示例
+        EXPAS title Steve 2 <color=#FFCC00>示例</color>
+        EXPAS title Steve 3
+
+2.11 EXPAS audio play <文件名>
+     从 configs\<端口>\EXPAS\audio\ 里找文件播放。
+     不写扩展名时会按支持格式自动补全查找（audio 目录）。
+     支持格式:
+        wav ogg mp3 m4a aac mp4 flac wma opus aiff aif wv ape mka webm
+     播放方式: 隐藏音箱（远处高空、非空间化 SpeakerToy，全服可闻），
+     **不生成任何假人**，玩家列表里不会多出条目。
+     解码: 内嵌自建原生 DLL 解码器（EXPAS.AudioCodec.dll + ffmpeg 共享库，
+     从 ffmpeg n9.0.1 源码编译），不需要任何 exe；WAV 走内置快速解码。
+
+2.12 EXPAS audio list      列出可用音频 + 当前解码器状态。
+2.13 EXPAS audio stop      停止播放（销毁音箱）。
+2.14 EXPAS audio call      打印 audio_calls 声明（配置里写明的"有哪些音频调用、
+                           打开后什么效果、用哪个 API 播放会怎样"）。
+
+2.15 EXPAS mvpmusic list   列出 mvp_music\ 下每个 JS 的 owner → 音频，
+                           并标注 [文件存在]/[文件缺失]，顺带列出未被引用的音频。
+2.16 EXPAS mvpmusic play <玩家ID>
+     立刻按该玩家 Steam64 检索 mvp_music\*.js 并播放（用于试听/排查）。
+     回合结束时会自动触发同样的流程（伤害第一名）。
+     详见《03_音乐盒JS编写方法.txt》。
+
+2.17 EXPAS layout list
+     列出已载入的每套布局: key  [显示名]  主块 N 排 / 等级块 N 排  (来自文件/内置默认)，
+     并附带打印当前白名单。
+     key = layouts\ 目录下文件名去掉 .txt / .js 的部分（内置默认布局固定叫 default）。
+2.18 EXPAS layout reload
+     重新扫描 layouts\ 目录（新增/修改布局文件后不用重启服务器），
+     并重新给在线玩家下发 SSS 菜单（面板下拉里的选项跟着更新）。
+2.19 EXPAS layout info <玩家ID>
+     看该玩家: 自定义 UI 选项列表 / 存储的布局 / **实际生效**的布局。
+     （非白名单、且布局归属不匹配的玩家: 实际生效永远是 default —— 权限隔离）
+2.20 EXPAS layout <玩家ID> <布局名>
+     按 Steam64 写进该玩家自己的数据文件，换机/重进都跟随。
+     若该布局的 owner 不是他、他也不在白名单里，写入会成功但**不会生效**，
+     回执里会提示原因。离线玩家也能改。
+
+2.21 EXPAS whitelist list              打印 custom_ui_whitelist 全部条目。
+2.22 EXPAS whitelist add <Steam64>     加入白名单 → 立刻写回 config.yml，
+                                       并马上给该玩家（在线时）下发含「自定义 UI」的面板。
+2.23 EXPAS whitelist remove <Steam64>  移出白名单 → 该玩家立刻回到默认布局
+                                       （他存的布局不会被删，重新加回即恢复）。
+     Steam64 支持 "76561198000000000@steam" 与纯数字（自动补 @steam），两者等价。
+     填 "*" = 放开给所有人（仅测试用）。
+
+2.24 EXPAS arsa [full]
+     重新识别"除自身以外"的全部插件:
+       · EXPAS arsa        重扫插件目录（载入新增 DLL）+ 重读各插件配置文件
+       · EXPAS arsa full   在上面基础上，再对其它插件执行 Disable → Enable（完整重跑，慎用）
+
+2.25 EXPAS config       打印当前主要配置值（服务器名/时区/倍率/等级上限/间隔/开关等）。
+2.26 EXPAS setcfg <键> <值>   改配置并写回 config.yml。键见第 4 节。
+2.27 EXPAS time <时区>   例: EXPAS time GMT+9 / EXPAS time 日本 / EXPAS time +8 / EXPAS time 8
+2.28 EXPAS line <1-4|level1|level2> <文本>
+     改 HUD 某一行的模板。键: 1 / 2 / 3 / 4 / level1（别名 l1）/ level2（别名 l2）
+     例: EXPAS line 1 <color=#4FA8FF>欢迎 {name} 来到 {server}</color>
+2.29 EXPAS custom add <文本> | clear | list
+     增 / 清 / 看 HUD 自定义行（写进 config.yml 的 custom_lines）。
+     自定义行在布局里的插入位置由布局文件的 custom| 行决定（见 UI 文档）。
+2.30 EXPAS mvp <文本>    设回合结束 MVP 公告模板，空 = 关闭。
+2.31 EXPAS top           本回合排行榜（前 top_count 名，含伤害/经验/击杀/等级）。
+2.32 EXPAS api <0|1>     开关本回合 API（ExpasApi）。
+2.33 EXPAS save          立即保存玩家数据与配置文件。
+2.34 EXPAS help [关键字]  简略帮助；带关键字时只列匹配的子命令与字段。
+
+--------------------------------------------------------------------------------
+【3. set|add 可用字段】
+--------------------------------------------------------------------------------
+  level             等级                 1 .. max_level（默认 100）
+  exp               当前等级内经验        最小 0
+  points            积分                 最小 0
+  lock              锁定状态             见 2.7
+  total_damage      总伤害               最小 0
+  total_kills       总击杀               最小 0
+  played_days       游玩天数             最小 1
+  today_play_time   今日游玩时间（秒）    最小 0（跨天自动归零）
+  total_play_time   总游玩时间（秒）      最小 0
+
+--------------------------------------------------------------------------------
+【4. setcfg 可用键】
+--------------------------------------------------------------------------------
+  server          服务器名（显示在 HUD 第 1 行及日志）
+  time / timezone 时区（GMT+8 / +8 / 国家名）
+  rate            1 点伤害换算多少经验
+  base            1→2 级所需经验
+  growth          每级经验增长倍率（>= 1.01）
+  maxlevel        最高等级
+  offlinedays     多少天未上线自动置 inactive（🕒）
+  hudinterval     HUD 刷新间隔（秒，0.2 .. 10）
+  playtimemode    游玩时长显示（0=自动 天/小时/分/秒，1=只按小时）
+  daysmode        天数显示（0=按天，1=从首次进入起算的总小时）
+  api             开放本回合 API（true/false）
+  topcount        排行榜取前几名（1 .. 20）
+  custompos       自定义行位置（0=等级块之前，1=等级块之后）
+  onlyreal        只统计真人玩家受到的伤害
+  countscp        是否统计对 SCP 的伤害
+  countdummies    是否统计对人机的伤害
+  settleondeath   受害者死亡时才结算（关=立刻结算）
+  texttemplates   使用配置文件里的文本模板
+  mvpannounce     回合结束 MVP 公告模板
+  line1 / line2 / line3 / line4      HUD 主块第 1~4 行模板
+  level1 / level2                    HUD 等级块第 1~2 行模板
+
+  例: EXPAS setcfg rate 2
+      EXPAS setcfg line3 本回合伤害 {roundDmg}   角色伤害 {roleDmg}
+
+--------------------------------------------------------------------------------
+【5. 占位符（可写进 HUD 模板、自定义行、布局文件任意文本）】
+--------------------------------------------------------------------------------
+  {name}       {server}     {days}       {hours}      {tz}        {clock}
+  {playtime}   {roundDmg}   {roleDmg}    {totalDmg}   {totalExp}  {level}
+  {exp}        {expNeed}    {kills}      {deaths}     {version}   {icons}
+  {mvpName}    {mvpDamage}  {mvpLevel}   {topList}
+  {points}     {roundPoints} {killName}  {killDamage} {killShare} {killPoints}
+  {roundTime}  {aliveCount} {tps}        {scpCount}   {roundId}
+  {killRole}        最近一次击杀的角色（RoleTypeId 名，例 NtfSergeant / Scp173）
+  {killRoleKind}    该角色类型: 人形 / SCP / 人机 / 其它
+  {aspect}          屏幕宽高比标签（16:9 / 16:10 / 21:9 / 4:3 / 其它(x.xx)）
+
+--------------------------------------------------------------------------------
+【6. 玩家ID 写法开关（config.yml）】
+--------------------------------------------------------------------------------
+  lookup_by_seq_id: true       允许用局内序列 ID（RA 列表编号）
+  lookup_by_name: true         允许用玩家名
+  lookup_by_steam: true        允许用 Steam64 / 完整 UserId（离线可用）
+  name_lookup_contains: true   玩家名是否支持"包含"模糊匹配
+                               （false = 必须完全一致）
+
+--------------------------------------------------------------------------------
+【7. 常用示例速查】
+--------------------------------------------------------------------------------
+  EXPAS                                   简略总览
+  EXPAS se                                匹配 set / setcfg / save
+  EXPAS info 3                            查序列 ID 3 的玩家
+  EXPAS set 示例 level 225
+  EXPAS add 示例 points 300
+  EXPAS addlevel Steve 10
+  EXPAS restartlevel Steve
+  EXPAS lock 76561198000000000 1
+  EXPAS unlock 示例
+  EXPAS title 示例 2 <color=#FFCC00>示例</color>
+  EXPAS audio list
+  EXPAS audio play 示例开场曲.wav
+  EXPAS audio call
+  EXPAS mvpmusic list
+  EXPAS mvpmusic play 示例
+  EXPAS layout list
+  EXPAS layout reload
+  EXPAS layout info 示例
+  EXPAS layout 76561198000000000 example
+  EXPAS whitelist add 76561198000000000
+  EXPAS setcfg rate 2
+  EXPAS time GMT+8
+  EXPAS arsa
+  EXPAS save
+================================================================================

@@ -1,0 +1,100 @@
+install prefix            /d/ffbuild/out
+source path               .
+C compiler                gcc
+C library                 mingw64
+ARCH                      x86 (generic)
+big-endian                no
+runtime cpu detection     yes
+standalone assembly       yes
+x86 assembler             nasm
+MMX enabled               yes
+MMXEXT enabled            yes
+SSE enabled               yes
+SSSE3 enabled             yes
+AESNI enabled             yes
+CLMUL enabled             yes
+AVX enabled               yes
+AVX2 enabled              yes
+AVX-512 enabled           yes
+AVX-512ICL enabled        yes
+XOP enabled               yes
+FMA3 enabled              yes
+FMA4 enabled              yes
+i686 features enabled     yes
+CMOV is fast              yes
+EBX available             yes
+EBP available             yes
+debug symbols             no
+strip symbols             yes
+optimize for size         yes
+optimizations             yes
+static                    no
+shared                    yes
+network support           no
+threading support         w32threads
+safe bitstream reader     yes
+texi2html enabled         no
+perl enabled              yes
+pod2man enabled           no
+makeinfo enabled          no
+makeinfo supports HTML    no
+experimental features     yes
+xmllint enabled           no
+
+External libraries:
+
+External libraries providing hardware acceleration:
+
+Libraries:
+avcodec                 avutil
+avformat                swresample
+
+Programs:
+
+Enabled decoders:
+aac                     mp3float                pcm_s32le
+aac_latm                mpc7                    pcm_s8
+ac3                     mpc8                    pcm_u8
+adpcm_ima_qt            nellymoser              speex
+adpcm_ima_wav           opus                    truehd
+adpcm_ms                pcm_alaw                tta
+alac                    pcm_f32be               vorbis
+ape                     pcm_f32le               wavpack
+dca                     pcm_mulaw               wmalossless
+eac3                    pcm_s16be               wmapro
+flac                    pcm_s16le               wmav1
+mlp                     pcm_s24be               wmav2
+mp2                     pcm_s24le
+mp3                     pcm_s32be
+
+Enabled encoders:
+
+Enabled hwaccels:
+
+Enabled parsers:
+aac                     dca                     mpegaudio
+aac_latm                flac                    opus
+ac3                     mlp                     vorbis
+
+Enabled demuxers:
+aac                     caf                     mov
+ac3                     dts                     mp3
+aiff                    eac3                    ogg
+ape                     flac                    wav
+asf                     matroska                wv
+
+Enabled muxers:
+
+Enabled protocols:
+file
+
+Enabled filters:
+
+Enabled bsfs:
+
+Enabled indevs:
+
+Enabled outdevs:
+
+License: LGPL version 2.1 or later
+CONFIGURE_EXIT=0

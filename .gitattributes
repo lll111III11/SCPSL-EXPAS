@@ -1,0 +1,11 @@
+# 统一换行符，避免 shell 脚本被转成 CRLF 后无法在 MSYS2 里执行
+* text=auto
+
+*.sh   text eol=lf
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cs   text eol=crlf
+
+# 二进制：原生解码 DLL 与插件成品，禁止任何换行符转换
+*.dll  binary
+*.pdb  binary

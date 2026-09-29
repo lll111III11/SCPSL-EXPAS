@@ -1,0 +1,102 @@
+================================================================================
+EXPAS 原生音频解码器 —— 源码与重建说明
+整理日期: 2026-09-29
+================================================================================
+
+【产物】
+  上一级目录(native\)里的 6 个 DLL:
+      avcodec-63.dll           ffmpeg 解码器库
+      avformat-63.dll          ffmpeg 封装/解封装库
+      avutil-61.dll            ffmpeg 基础工具库
+      swresample-7.dll         ffmpeg 重采样库
+      libwinpthread-1.dll      线程运行库(avutil 依赖它, 来自 MSYS2 mingw64\bin)
+      EXPAS.AudioCodec.dll     ★ 我们自己写的 C 包装层(对外只暴露 3 个导出函数)
+
+【本目录内容】
+  expas_codec.c                        自建 C 包装层源码
+  rebuild.sh                           一键重建脚本(路径自适应, 推荐用这个)
+  cfg.sh / build.sh / wrap.sh          当时的原始构建脚本(内含 d:\ffbuild 绝对路径, 仅作记录)
+  configure.log / build.log / wrapper.log / path.txt    当时构建的日志与记录
+  ffmpeg-n9.0.1\                       ffmpeg n9.0.1 完整源码树
+                                       (前 4 个 DLL 就是从它编译出来的, 已含构建产物)
+
+【环境依赖】
+  MSYS2 (默认装在 C:\msys64) + mingw-w64 gcc + nasm + make
+  pacman -S --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-nasm make
+  在 MSYS2 的 MinGW64 shell 里执行下面的命令。
+
+================================================================================
+【重建三步】
+================================================================================
+① 编译 ffmpeg 共享库(只保留音频所需部分, 所以体积很小)
+
+     cd ffmpeg-n9.0.1
+     ./configure --prefix="$PWD/../out" --target-os=mingw32 --arch=x86_64 \
+       --enable-shared --disable-static --disable-programs --disable-doc --disable-debug --disable-network \
+       --disable-avdevice --disable-swscale --disable-avfilter --disable-everything --disable-autodetect \
+       --enable-protocol=file \
+       --enable-demuxer=ogg,mov,matroska,mp3,flac,wav,asf,aac,aiff,ape,wv,ac3,eac3,dts,caf \
+       --enable-decoder=vorbis,opus,mp3,mp3float,mp2,aac,aac_latm,alac,flac,wmav1,wmav2,wmapro,wmalossless,ac3,eac3,dca,truehd,mlp,ape,wavpack,mpc7,mpc8,speex,tta,nellymoser,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s24be,pcm_s32le,pcm_s32be,pcm_f32le,pcm_f32be,pcm_u8,pcm_s8,pcm_alaw,pcm_mulaw,adpcm_ima_wav,adpcm_ms,adpcm_ima_qt \
+       --enable-parser=ogg,opus,vorbis,mpegaudio,aac,aac_latm,flac,ac3,dca \
+       --enable-small
+     make -j"$(nproc)"
+     make install
+
+② 编译自建包装层(回到本目录)
+
+     gcc -O2 -shared -o EXPAS.AudioCodec.dll expas_codec.c \
+         -Iout/include -Lout/lib -lavformat -lavcodec -lavutil -lswresample
+
+③ 组装
+     把 out/bin/ 下的 avcodec-*.dll、avformat-*.dll、avutil-*.dll、swresample-*.dll
+     + 上一步的 EXPAS.AudioCodec.dll
+     + libwinpthread-1.dll(从 C:\msys64\mingw64\bin\ 复制)
+     一起放到上一级目录 native\ , 然后运行"源码\build.ps1"重新打包出 EXPAS.NP.dll。
+
+  ★ rebuild.sh 已经把这三步串好了, 直接执行:   sh rebuild.sh
+
+================================================================================
+【必须保留的一处补丁 —— 别还原】
+================================================================================
+  ffmpeg-n9.0.1\compat\windows\makedef 第 19 行
+
+     原版:   echo "${2%%XXX*}.${HOSTNAME}.${UID}.$$"
+     本份:   echo "${2%%XXX*}.ffbuild.${UID}.$$"
+
+  原因: Windows 机器名含中文时(例: "MateBook-D-16-个人"), 生成的 .def 文件名
+        链接器读不了 → 报  ar: library.<...>.lib: Invalid argument , 链接 DLL 失败。
+        固定成 "ffbuild" 即可绕开。
+
+================================================================================
+【为什么内嵌资源名要加 ".bin"】
+================================================================================
+  源码\build.ps1 把 native\*.dll 内嵌为资源名  native.<文件名>.bin
+  （注意末尾的 .bin）
+
+  原因: LabAPI 的 AssemblyUtils.ResolveEmbeddedResources() 会对每个插件无条件执行,
+        凡是以 .dll / .dll.compressed 结尾的内嵌资源都会被当成"内嵌托管程序集",
+        丢给 AssemblyName.GetAssemblyName() 解析 → 原生 DLL 直接抛
+        BadImageFormatException, 日志刷一串 ERROR。
+        加 ".bin" 后缀让 LabAPI 跳过, 释放时再由 ExpasNative.cs 剥掉后缀。
+
+================================================================================
+【运行时行为】
+================================================================================
+  · 这 6 个 DLL 内嵌在 EXPAS.NP.dll 里, 启动时自动释放到
+        configs\<端口>\EXPAS\bin\native\
+  · 用  LoadLibraryExW(wrapper, 0, LOAD_WITH_ALTERED_SEARCH_PATH)
+    加载包装层 —— 让 Windows 在"该 DLL 自己所在目录"找它的依赖
+    (否则报 err=126 找不到 avcodec-63.dll)
+  · 包装层对外导出 3 个函数:
+        expas_decode(pathUtf8, targetRate, targetChannels, &data, &samples, err, errLen)
+            把任意支持格式解成 f32 / 单声道 / 48000Hz(SCP:SL SpeakerToy 要求的口径)
+        expas_free(ptr)          释放解码结果
+        expas_codec_version()    版本串, 例 "EXPAS.AudioCodec/1.0 (ffmpeg n9.0.1)"
+
+================================================================================
+【提示】
+================================================================================
+  · 建议把整个"源码"目录复制到**纯英文路径**下再编译 ——
+    路径里带中文时个别构建工具会出问题。
+  · 解码日志已用 av_log_set_level(AV_LOG_QUIET) 静音, 不会污染服务器控制台。
+================================================================================

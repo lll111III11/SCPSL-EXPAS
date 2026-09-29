@@ -1,0 +1,7 @@
+PATH=/usr/bin:/mingw64/bin:/d/TRAE SOLO CN/resources/app/modules/ai-agent/bin:/c/Users/35762/.trae-cn/plugins/trae-remote-official/lark/1.0.5/bin:/c/Program Files/Eclipse Foundation/jdk-8.0.302.8-hotspot/bin:/c/Windows/System32/HWAudioDriver:/c/Windows/system32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Windows/System32/OpenSSH:/c/Users/Administrator/AppData/Local/Microsoft/WindowsApps:/c/Program Files/Microsoft SQL Server/170/Tools/Binn:/c/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn:/c/Program Files/dotnet:/c/Program Files/playit_gg/bin:/c/Program Files/nodejs:/c/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit:/d/EasyShare/x86:/d/EasyShare/x64:/c/Program Files/Microsoft SQL Server/130/Tools/Binn:/c/Program Files/Git/cmd:/c/Program Files/Tailscale:/c/tools/apache-maven-3.9.9/bin:/c/Users/35762/AppData/Local/Programs/Eclipse Adoptium/jdk-25.0.3.9-hotspot/bin:/c/Users/35762/AppData/Local/Microsoft/WindowsApps:/e/Microsoft VS Code/bin:/c/Users/35762/.dotnet/tools:/c/Users/35762/AppData/Local/Chocolatey/bin:/c/Program Files (x86)/Nmap:/c/Users/35762/AppData/Roaming/npm:/c/Users/35762/AppData/Local/Python/bin:/d/Tuanjie Cowork:/d/Tuanjie Cowork/cli/bin/win32-x64:/d/Tuanjie Cowork/app/resource/core/bin/win32-x64:/d/Tuanjie Cowork/hub:/d/TRAE SOLO CN/resources/app/bin/lib:/d/TRAE SOLO CN/resources/app/node_modules/@vscode/ripgrep/bin
+/usr/bin/sed
+/usr/bin/tr
+/usr/bin/awk
+/mingw64/bin/gcc
+/mingw64/bin/nasm
+/usr/bin/make
