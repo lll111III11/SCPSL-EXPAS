@@ -5,7 +5,7 @@
 
 [![状态](https://img.shields.io/badge/status-Beta-orange)](#-版本状态beta)
 [![平台](https://img.shields.io/badge/platform-SCP%3ASL%20LabAPI-blue)](#-环境要求)
-[![授权](https://img.shields.io/badge/license-专有%2F保留所有权利-red)](LICENSE)
+[![授权](https://img.shields.io/badge/license-CC0--1.0-lightgrey)](LICENSE)
 
 ---
 
@@ -172,11 +172,12 @@ powershell -ExecutionPolicy Bypass -File 源码与成品\源码\build.ps1
 
 ## 许可
 
-本项目采用**专有许可**：**保留所有权利**（All Rights Reserved）。
+本项目采用 **CC0 1.0 Universal（公共领域贡献）** —— 在法律允许的最大范围内放弃全部著作权及相关权利。
 
-- ✅ 可以：下载、阅读源码、在自己的服务器上使用、为自己服务器修改与重新编译、原样转发
-- ❌ 不可以：修改后以任何名义二次发布、移除署名、据为己有、商业售卖
+- ✅ 可以：任意使用、修改、再发布、商业使用，**无需署名**
+- ✅ 可以：直接并入闭源或开源项目
+- ⚠️ **第三方组件（FFmpeg 等）不受本项目的 CC0 约束**，仍遵循各自的许可，
+  见 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)
+- ⚠️ 本作品按"现状"提供，不附带任何明示或默示担保
 
-完整条款见 [`LICENSE`](LICENSE)。第三方组件（FFmpeg 等）不受本项目许可约束，见 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)。
-
-**Copyright (c) 2026 example_dev. All rights reserved.**
+完整条款见 [`LICENSE`](LICENSE)（CC0 1.0 官方法律文本）。

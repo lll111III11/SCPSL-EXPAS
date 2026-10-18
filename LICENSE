@@ -1,70 +1,121 @@
-EXPAS 经验扩展插件系统 —— 专有许可协议
-================================================================================
-Copyright (c) 2026 example_dev
-All rights reserved.  /  保留所有权利
-================================================================================
+Creative Commons Legal Code
 
-本许可适用于本仓库的全部原创内容，包括但不限于：
+CC0 1.0 Universal
 
-  · C# 插件源码        （源码与成品/源码/*.cs）
-  · 原生解码包装层源码  （源码与成品/源码/native/src/expas_codec.c）
-  · 构建脚本、配置样例、文档与说明
-  · 编译产物           （源码与成品/成品/EXPAS.NP.dll）
+    CREATIVE COMMONS CORPORATION IS NOT A LAW FIRM AND DOES NOT PROVIDE
+    LEGAL SERVICES. DISTRIBUTION OF THIS DOCUMENT DOES NOT CREATE AN
+    ATTORNEY-CLIENT RELATIONSHIP. CREATIVE COMMONS PROVIDES THIS
+    INFORMATION ON AN "AS-IS" BASIS. CREATIVE COMMONS MAKES NO WARRANTIES
+    REGARDING THE USE OF THIS DOCUMENT OR THE INFORMATION OR WORKS
+    PROVIDED HEREUNDER, AND DISCLAIMS LIABILITY FOR DAMAGES RESULTING FROM
+    THE USE OF THIS DOCUMENT OR THE INFORMATION OR WORKS PROVIDED
+    HEREUNDER.
 
-第三方组件（FFmpeg 共享库、mingw-w64 运行库等）不受本许可约束，
-其授权以各自原始许可为准，详见 THIRD-PARTY-NOTICES.md 与本许可第 4 条。
+Statement of Purpose
 
+The laws of most jurisdictions throughout the world automatically confer
+exclusive Copyright and Related Rights (defined below) upon the creator
+and subsequent owner(s) (each and all, an "owner") of an original work of
+authorship and/or a database (each, a "Work").
 
---------------------------------------------------------------------------------
-第 1 条  允许
---------------------------------------------------------------------------------
-  1.1  免费下载、阅读、学习本项目源码；
-  1.2  在任意 SCP:SL LabAPI 服务器上使用本插件（EXPAS.NP.dll）；
-  1.3  为你自己的服务器修改本项目并重新编译，供自己使用；
-  1.4  原样、未修改地转发本仓库内容或本插件。
+Certain owners wish to permanently relinquish those rights to a Work for
+the purpose of contributing to a commons of creative, cultural and
+scientific works ("Commons") that the public can reliably and without fear
+of later claims of infringement build upon, modify, incorporate in other
+works, reuse and redistribute as freely as possible in any form whatsoever
+and for any purposes, including without limitation commercial purposes.
+These owners may contribute to the Commons to promote the ideal of a free
+culture and the further production of creative, cultural and scientific
+works, or to gain reputation or greater distribution for their Work in
+part through the use and efforts of others.
 
---------------------------------------------------------------------------------
-第 2 条  禁止
---------------------------------------------------------------------------------
-  2.1  将本项目（整体或其实质性部分）修改后以任何名义二次发布、再分发
-       或公开传播；
-  2.2  移除、隐藏或替换本项目的著作权署名（包括插件内的 Author 与版本信息）；
-  2.3  将本项目据为己有，或声称本项目由他人（含你本人）独立开发；
-  2.4  将本项目或其编译产物用于任何商业售卖或营利性分发。
+For these and/or other purposes and motivations, and without any
+expectation of additional consideration or compensation, the person
+associating CC0 with a Work (the "Affirmer"), to the extent that he or she
+is an owner of Copyright and Related Rights in the Work, voluntarily
+elects to apply CC0 to the Work and publicly distribute the Work under its
+terms, with knowledge of his or her Copyright and Related Rights in the
+Work and the meaning and intended legal effect of CC0 on those rights.
 
---------------------------------------------------------------------------------
-第 3 条  权利保留
---------------------------------------------------------------------------------
-  未在本许可中明确授予的权利，均由著作权人 example_dev 保留。
-  本许可不转让著作权，也不构成任何形式的著作权放弃。
+1. Copyright and Related Rights. A Work made available under CC0 may be
+protected by copyright and related or neighboring rights ("Copyright and
+Related Rights"). Copyright and Related Rights include, but are not
+limited to, the following:
 
---------------------------------------------------------------------------------
-第 4 条  第三方组件（除外条款）
---------------------------------------------------------------------------------
-  本插件内嵌或随附的以下组件归第三方所有，**不受本许可第 2 条约束**：
+  i. the right to reproduce, adapt, distribute, perform, display,
+     communicate, and translate a Work;
+ ii. moral rights retained by the original author(s) and/or performer(s);
+iii. publicity and privacy rights pertaining to a person's image or
+     likeness depicted in a Work;
+ iv. rights protecting against unfair competition in regards to a Work,
+     subject to the limitations in paragraph 4(a), below;
+  v. rights protecting the extraction, dissemination, use and reuse of data
+     in a Work;
+ vi. database rights (such as those arising under Directive 96/9/EC of the
+     European Parliament and of the Council of 11 March 1996 on the legal
+     protection of databases, and under any national implementation
+     thereof, including any amended or successor version of such
+     directive); and
+vii. other similar, equivalent or corresponding rights throughout the
+     world based on applicable law or treaty, and any national
+     implementations thereof.
 
-  4.1  FFmpeg 共享库
-         avcodec-63.dll / avformat-63.dll / avutil-61.dll / swresample-7.dll
-         版权归 FFmpeg 项目及其贡献者所有，按 GNU LGPL v2.1 或更高版本授权。
-         本项目编译时未启用任何 GPL 或 nonfree 模块（CONFIG_GPL=0、CONFIG_NONFREE=0）。
+2. Waiver. To the greatest extent permitted by, but not in contravention
+of, applicable law, Affirmer hereby overtly, fully, permanently,
+irrevocably and unconditionally waives, abandons, and surrenders all of
+Affirmer's Copyright and Related Rights and associated claims and causes
+of action, whether now known or unknown (including existing as well as
+future claims and causes of action), in the Work (i) in all territories
+worldwide, (ii) for the maximum duration provided by applicable law or
+treaty (including future time extensions), (iii) in any current or future
+medium and for any number of copies, and (iv) for any purpose whatsoever,
+including without limitation commercial, advertising or promotional
+purposes (the "Waiver"). Affirmer makes the Waiver for the benefit of each
+member of the public at large and to the detriment of Affirmer's heirs and
+successors, fully intending that such Waiver shall not be subject to
+revocation, rescission, cancellation, termination, or any other legal or
+equitable action to disrupt the quiet enjoyment of the Work by the public
+as contemplated by Affirmer's express Statement of Purpose.
 
-  4.2  mingw-w64 运行库
-         libwinpthread-1.dll
-         版权归 mingw-w64 项目所有，按其自身许可授权。
+3. Public License Fallback. Should any part of the Waiver for any reason
+be judged legally invalid or ineffective under applicable law, then the
+Waiver shall be preserved to the maximum extent permitted taking into
+account Affirmer's express Statement of Purpose. In addition, to the
+extent the Waiver is so judged Affirmer hereby grants to each affected
+person a royalty-free, non transferable, non sublicensable, non exclusive,
+irrevocable and unconditional license to exercise Affirmer's Copyright and
+Related Rights in the Work (i) in all territories worldwide, (ii) for the
+maximum duration provided by applicable law or treaty (including future
+time extensions), (iii) in any current or future medium and for any number
+of copies, and (iv) for any purpose whatsoever, including without
+limitation commercial, advertising or promotional purposes (the
+"License"). The License shall be deemed effective as of the date CC0 was
+applied by Affirmer to the Work. Should any part of the License for any
+reason be judged legally invalid or ineffective under applicable law, such
+partial invalidity or ineffectiveness shall not invalidate the remainder
+of the License, and in such case Affirmer hereby affirms that he or she
+will not (i) exercise any of his or her remaining Copyright and Related
+Rights in the Work or (ii) assert any associated claims and causes of
+action with respect to the Work, in either case contrary to Affirmer's
+express Statement of Purpose.
 
-  上述组件的复制、修改与再分发，一律以各自原始许可为准；
-  任何人在行使这些组件自身的许可权利时，不受本许可限制。
+4. Limitations and Disclaimers.
 
---------------------------------------------------------------------------------
-第 5 条  免责声明
---------------------------------------------------------------------------------
-  本插件按"现状"（AS IS）提供，不提供任何明示或默示的担保，包括但不限于
-  对适销性、特定用途适用性及不侵权的担保。
-
-  在任何情况下，著作权人均不对因使用或无法使用本插件而产生的任何直接、
-  间接、偶然、特殊或后果性损害承担责任。
-
-================================================================================
-如需获得本许可未授予的授权（例如二次发布、商业使用），
-请联系著作权人另行取得书面许可。
-================================================================================
+ a. No trademark or patent rights held by Affirmer are waived, abandoned,
+    surrendered, licensed or otherwise affected by this document.
+ b. Affirmer offers the Work as-is and makes no representations or
+    warranties of any kind concerning the Work, express, implied,
+    statutory or otherwise, including without limitation warranties of
+    title, merchantability, fitness for a particular purpose, non
+    infringement, or the absence of latent or other defects, accuracy, or
+    the present or absence of errors, whether or not discoverable, all to
+    the greatest extent permissible under applicable law.
+ c. Affirmer disclaims responsibility for clearing rights of other persons
+    that may apply to the Work or any use thereof, including without
+    limitation any person's Copyright and Related Rights in the Work.
+    Further, Affirmer disclaims responsibility for obtaining any necessary
+    consents, permissions or other rights required for any use of the
+    Work.
+ d. Affirmer understands and acknowledges that Creative Commons is not a
+    party to this document and has no duty or obligation with respect to
+    this CC0 or use of the Work.

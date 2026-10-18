@@ -1,7 +1,8 @@
 # 第三方组件声明（THIRD-PARTY NOTICES）
 
 本仓库的**原创部分**（C# 插件代码、原生解码包装层 `expas_codec.c`、构建脚本、文档）
-由 example_dev 独立开发，采用仓库根目录 [`LICENSE`](LICENSE) 中的专有许可。
+由 example_dev 独立开发，采用仓库根目录 [`LICENSE`](LICENSE) 中的
+**CC0 1.0 Universal（公共领域贡献）**。
 
 但编译产物与源码目录中包含以下**第三方开源组件**，它们的版权与授权**不属于本项目**。
 下面逐项说明，以满足各自的许可要求。
