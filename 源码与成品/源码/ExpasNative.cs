@@ -15,6 +15,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using L = Expas.ExpasLang;
 using Logger = LabApi.Features.Console.Logger;
 
 namespace Expas
@@ -122,14 +123,14 @@ namespace Expas
                 string wrapper = Path.Combine(dir, WrapperDllName);
                 if (!File.Exists(wrapper))
                 {
-                    Logger.Warn($"[EXPAS] 未内嵌原生解码器({WrapperDllName}), 跳过");
+                    Logger.Warn("[EXPAS] " + L.T($"未内嵌原生解码器({WrapperDllName}), 跳过", $"Native Decoder not embedded ({WrapperDllName}), skipped"));
                     return false;
                 }
 
                 _nativeModule = LoadLibraryExW(wrapper, IntPtr.Zero, LOAD_WITH_ALTERED_SEARCH_PATH);
                 if (_nativeModule == IntPtr.Zero)
                 {
-                    Logger.Warn($"[EXPAS] 加载原生解码器失败(err={Marshal.GetLastWin32Error()}): {wrapper}");
+                    Logger.Warn("[EXPAS] " + L.T($"加载原生解码器失败(err={Marshal.GetLastWin32Error()}): {wrapper}", $"Failed to load Native Decoder (err={Marshal.GetLastWin32Error()}): {wrapper}"));
                     return false;
                 }
 
@@ -137,19 +138,20 @@ namespace Expas
                 IntPtr pFree = GetProcAddress(_nativeModule, "expas_free");
                 if (pDecode == IntPtr.Zero || pFree == IntPtr.Zero)
                 {
-                    Logger.Warn("[EXPAS] 原生解码器缺少导出函数(expas_decode/expas_free)");
+                    Logger.Warn("[EXPAS] " + L.T("原生解码器缺少导出函数(expas_decode/expas_free)", "Native Decoder is missing exports (expas_decode/expas_free)"));
                     return false;
                 }
                 _nativeDecode = Marshal.GetDelegateForFunctionPointer<ExpasDecodeFn>(pDecode);
                 _nativeFree = Marshal.GetDelegateForFunctionPointer<ExpasFreeFn>(pFree);
                 _nativeDir = dir;
                 _nativeOk = true;
-                Logger.Info($"[EXPAS] 原生解码器就绪: {NativeCodecVersion ?? "?"}  释放 {released} 个 DLL → {dir}");
+                Logger.Info("[EXPAS] " + L.T($"原生解码器就绪: {NativeCodecVersion ?? "?"}  释放 {released} 个 DLL → {dir}",
+                                              $"Native Decoder ready: {NativeCodecVersion ?? "?"}  released {released} DLL(s) → {dir}"));
                 return true;
             }
             catch (Exception ex)
             {
-                Logger.Warn($"[EXPAS] 原生解码器初始化失败: {ex.Message}");
+                Logger.Warn("[EXPAS] " + L.T($"原生解码器初始化失败: {ex.Message}", $"Native Decoder initialization failed: {ex.Message}"));
                 return false;
             }
         }
@@ -163,7 +165,7 @@ namespace Expas
             samples = null; error = null;
             if (!EnsureNative() || _nativeDecode == null)
             {
-                error = "原生解码器不可用";
+                error = L.T("原生解码器不可用", "Native Decoder unavailable");
                 return false;
             }
 

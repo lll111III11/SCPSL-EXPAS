@@ -51,6 +51,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using ICommand = CommandSystem.ICommand;
+using L = Expas.ExpasLang;
 using Logger = LabApi.Features.Console.Logger;
 
 namespace Expas
@@ -61,7 +62,7 @@ namespace Expas
         public const string PluginVersion = "2.0.0-beta";
 
         public override string Name => "EXPAS";
-        public override string Description => "经验扩展插件系统 (Beta): 经验/称号/音频/状态 (Experience, eXtended Plugins, Audio, and Status System)";
+        public override string Description => L.T("经验扩展插件系统 (Beta): 经验/称号/音频/状态 (Experience, eXtended Plugins, Audio, and Status System)", "Experience extension plugin system (Beta): EXP/Title/Audio/Status (Experience, eXtended Plugins, Audio, and Status System)");
         public override string Author => "匿名作者";
         public override Version RequiredApiVersion => LabApiProperties.CurrentVersion;
 
@@ -80,6 +81,9 @@ namespace Expas
 
             [System.ComponentModel.Description("时区: 可写 GMT+8 / +8 / 国家名(中国/日本/美国东部/英国...) 默认 GMT+8")]
             public string TimeZone { get; set; } = "GMT+8";
+
+            [System.ComponentModel.Description("界面语言: auto=按地区自动检测(时区+公网IP) / zh=中文 / en=English (默认 auto)")]
+            public string Language { get; set; } = "auto";
 
             [System.ComponentModel.Description("伤害换算经验倍率(1点伤害 = 多少经验)")]
             public float DamageToExp { get; set; } = 1f;
@@ -432,8 +436,9 @@ namespace Expas
 
             if (fixedItems.Count > 0)
             {
-                SaveConfig();
-                Logger.Warn($"[EXPAS] 配置防呆: 已修正 {fixedItems.Count} 项越界数值并写回 → {string.Join(", ", fixedItems)}");
+                SaveConfig(); LocalizeConfigFile();
+                Logger.Warn(L.T($"[EXPAS] 配置防呆: 已修正 {fixedItems.Count} 项越界数值并写回 → {string.Join(", ", fixedItems)}",
+                    $"[EXPAS] Config guard: fixed {fixedItems.Count} out-of-range value(s) and wrote them back → {string.Join(", ", fixedItems)}"));
             }
         }
 
@@ -451,9 +456,24 @@ namespace Expas
             return v;
         }
 
+        /// <summary>按当前语言回写 config.yml 的注释(LabAPI 生成的是 [Description] 原文)。</summary>
+        private void LocalizeConfigFile()
+        {
+            try
+            {
+                DirectoryInfo dir = ConfigDirInfo;
+                if (dir != null) ExpasLang.LocalizeConfigFile(Path.Combine(dir.FullName, "config.yml"));
+            }
+            catch { }
+        }
+
         public override void Enable()
         {
             Instance = this;
+            // 语言/地区检测先跑: 后面的默认文案、日志、面板标题都按结果取词
+            ExpasLang.Initialize(Config.Language, Config.TimeZone);
+            if (ExpasLang.ApplyTextDefaults(Config)) SaveConfig();
+            LocalizeConfigFile();
             ClampConfig();               // v1.5 配置防呆: 越界数值夹回安全区间, 只在确有改动时写回
             MigrateLegacyPlayersDir();   // v1.4: 旧库 configs\EXPAS\players → configs\<端口>\EXPAS\players(复制, 不删旧文件)
             LoadLayouts();               // v1.7: 扫描 layouts\*.txt(缺失/失败 → 回退内置默认布局, 必须永远可用)
@@ -467,7 +487,8 @@ namespace Expas
             {
                 EnsureNative();
                 EnsureFfmpeg();
-                Logger.Info($"[EXPAS] 音频解码器: {DecoderStatusText()}  (支持 {string.Join("/", AudioExtensions.Select(x => x.TrimStart('.')))})");
+                Logger.Info(L.T($"[EXPAS] 音频解码器: {DecoderStatusText()}  (支持 {string.Join("/", AudioExtensions.Select(x => x.TrimStart('.')))})",
+                    $"[EXPAS] Audio decoder: {DecoderStatusText()}  (supports {string.Join("/", AudioExtensions.Select(x => x.TrimStart('.')))})"));
             }
             catch { }
 
@@ -482,7 +503,11 @@ namespace Expas
             RegisterSss();                       // SSS 面板: 玩家自调 HUD 字号/缩放/位置
 
             _loop = Timing.RunCoroutine(HudLoop());
-            Logger.Info($"[EXPAS] 经验系统已启用 v{PluginVersion} (服务器名: {Config.ServerName})");
+            Logger.Info(L.T($"[EXPAS] 经验系统已启用 v{PluginVersion} (服务器名: {Config.ServerName})",
+                $"[EXPAS] EXP system enabled v{PluginVersion} (server name: {Config.ServerName})"));
+            Logger.Info(L.T(
+                $"[EXPAS] 语言/地区: 中文 (检测依据: {ExpasLang.DetectedBy})",
+                $"[EXPAS] Language/region: English (detected by: {ExpasLang.DetectedBy})"));
         }
 
         public override void Disable()
@@ -499,7 +524,7 @@ namespace Expas
             UnregisterSss();
             StopAudio();                 // v2.0: 停掉隐藏音箱播放
             try { lock (_pendingLock) _pendingPlays.Clear(); } catch { }   // v2.4: 丢掉未播出的解码结果
-            FlushAll("插件卸载");
+            FlushAll(L.T("插件卸载", "plugin unload"));
             Instance = null;
         }
 
@@ -529,14 +554,14 @@ namespace Expas
             if (_xpFrozen)                        // v1.5: 经验冻结只作用于"当前回合", 下一回合自动恢复
             {
                 _xpFrozen = false;
-                Logger.Info("[EXPAS] 新回合开始, 经验冻结已自动解除(EXPAS xpfreeze 只冻结一个回合)");
+                Logger.Info(L.T("[EXPAS] 新回合开始, 经验冻结已自动解除(EXPAS xpfreeze 只冻结一个回合)", "[EXPAS] New round started, EXP freeze has been lifted automatically (EXPAS xpfreeze only freezes one round)"));
             }
             _pending.Clear();
             _roundDamage.Clear();
             _roundExp.Clear();
             _roundKills.Clear();
             _roundPoints.Clear();
-            FlushAll("回合结束");
+            FlushAll(L.T("回合结束", "round end"));
         }
 
         // ========================================================================
@@ -567,10 +592,11 @@ namespace Expas
 
                 string icons = GetIconString(d);
                 if (Config.HudEnabled && !IsHudOff(p.UserId))
-                    p.SendHint($"<color=#4FA8FF>欢迎 {p.Nickname} 进入到 {Config.ServerName}</color> " +
+                    p.SendHint(L.T($"<color=#4FA8FF>欢迎 {p.Nickname} 进入到 {Config.ServerName}</color> ",
+                                   $"<color=#4FA8FF>Welcome {p.Nickname} to {Config.ServerName}</color> ") +
                                $"<color=#AAAAAA>[EXPAS v{PluginVersion}]</color>{icons}", 5f);
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 加入处理失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 加入处理失败: {ex.Message}", $"[EXPAS] Join handling failed: {ex.Message}")); }
         }
 
         private void OnLeft(PlayerLeftEventArgs ev)
@@ -595,7 +621,7 @@ namespace Expas
                 _menuSentTo.Remove(uid);      // v1.8.1: 玩家离开 → 清掉"已下发个性化菜单"标记(防集合无限增长)
                 _sssCommitThrottle.Remove(uid);  // v1.8.2: 清掉 SSS 写盘/刷新节流记录
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 离开处理失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 离开处理失败: {ex.Message}", $"[EXPAS] Leave handling failed: {ex.Message}")); }
         }
 
         private void _pendingRemoveAttacker(string uid)
@@ -651,7 +677,7 @@ namespace Expas
                     ApplyExp(d, exp);
                 }
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 伤害记录失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 伤害记录失败: {ex.Message}", $"[EXPAS] Damage recording failed: {ex.Message}")); }
         }
 
         private void OnDeath(PlayerDeathEventArgs ev)
@@ -673,7 +699,7 @@ namespace Expas
                     UpdateName(vic, vd);
                 }
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 死亡结算失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 死亡结算失败: {ex.Message}", $"[EXPAS] Death settlement failed: {ex.Message}")); }
         }
 
         /// <summary>
@@ -694,7 +720,7 @@ namespace Expas
                 _lastRole[p.UserId] = p.Role;    // 同步轮询快照, 避免下一周期又被判成"换角色"重复归零
                 SavePlayer(GetData(p.UserId, p.Nickname));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 换角色处理失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 换角色处理失败: {ex.Message}", $"[EXPAS] Role change handling failed: {ex.Message}")); }
         }
 
         /// <summary>
@@ -784,10 +810,10 @@ namespace Expas
         {
             try
             {
-                if (victim != null && !victim.IsDestroyed && victim.IsDummy) return "人机";
+                if (victim != null && !victim.IsDestroyed && victim.IsDummy) return L.T("人机", "Dummy");
                 if (role.GetTeam() == Team.SCPs) return "SCP";
-                if (role.IsHuman()) return "人形";
-                return "其它";
+                if (role.IsHuman()) return L.T("人形", "Human");
+                return L.T("其它", "Other");
             }
             catch { return "-"; }
         }
@@ -828,11 +854,13 @@ namespace Expas
                 //   (MVP 公告仍旧走广播, 那是全服可见的回合结算信息。)
                 if (Config.LevelUpNotice > 0 && !IsHudOff(owner.UserId))
                     owner.SendHint(
-                        $"<color=#FFD700>【EXPAS】升级! 您现在是 {d.Level} 级</color>\n" +
-                        $"<color=#55FF55>距离下一级还差 {Mathf.Max(0f, ExpNeeded(d.Level) - d.Exp):F0} 经验</color>",
+                        L.T($"<color=#FFD700>【EXPAS】升级! 您现在是 {d.Level} 级</color>\n",
+                            $"<color=#FFD700>[EXPAS] Level up! You are now level {d.Level}</color>\n") +
+                        L.T($"<color=#55FF55>距离下一级还差 {Mathf.Max(0f, ExpNeeded(d.Level) - d.Exp):F0} 经验</color>",
+                            $"<color=#55FF55>{Mathf.Max(0f, ExpNeeded(d.Level) - d.Exp):F0} EXP to next level</color>"),
                         Mathf.Clamp(Config.LevelUpNotice, 1, 30));
                 UpdateName(owner, d);
-                Logger.Info($"[EXPAS] {d.Name}({d.UserId}) 升到 {d.Level} 级");
+                Logger.Info(L.T($"[EXPAS] {d.Name}({d.UserId}) 升到 {d.Level} 级", $"[EXPAS] {d.Name}({d.UserId}) reached level {d.Level}"));
             }
             SavePlayer(d);
         }
@@ -886,14 +914,18 @@ namespace Expas
                 string txt = newState switch
                 {
                     // v1.6: 图标统一走 LockIcon(修 unicode 缺字), 不再硬编码 emoji
-                    LockPunishment => $"{LockIcon(LockPunishment)} 已进入惩罚锁定: 伤害与经验都不再记录",
-                    LockSelfBan => $"{LockIcon(LockSelfBan)} 已进入自助封禁: 伤害不增长, 经验仍在叠加, 解除后一次性入账",
-                    LockInactive => $"{LockIcon(LockInactive)} 已标记为长期未上线(inactive)",
-                    _ => "✅ 数据锁定已解除"
+                    LockPunishment => L.T($"{LockIcon(LockPunishment)} 已进入惩罚锁定: 伤害与经验都不再记录",
+                        $"{LockIcon(LockPunishment)} Punishment lock enabled: damage and EXP are no longer recorded"),
+                    LockSelfBan => L.T($"{LockIcon(LockSelfBan)} 已进入自助封禁: 伤害不增长, 经验仍在叠加, 解除后一次性入账",
+                        $"{LockIcon(LockSelfBan)} Self-ban enabled: damage does not grow, EXP still accumulates and is credited at once when unbanned"),
+                    LockInactive => L.T($"{LockIcon(LockInactive)} 已标记为长期未上线(inactive)",
+                        $"{LockIcon(LockInactive)} Marked as inactive"),
+                    _ => L.T("✅ 数据锁定已解除", "✅ Data lock removed")
                 };
                 owner.SendHint($"<color=#FFD700>【EXPAS】{txt}</color>", 5f);
             }
-            Logger.Info($"[EXPAS] {d.Name}({d.UserId}) 锁定状态 {LockName(oldState)} → {LockName(newState)} ({reason})");
+            Logger.Info(L.T($"[EXPAS] {d.Name}({d.UserId}) 锁定状态 {LockName(oldState)} → {LockName(newState)} ({reason})",
+                $"[EXPAS] {d.Name}({d.UserId}) lock state {LockName(oldState)} → {LockName(newState)} ({reason})"));
         }
 
         /// <summary>锁定状态的可读名(规格口径)。</summary>
@@ -901,10 +933,10 @@ namespace Expas
         {
             switch (s)
             {
-                case LockPunishment: return "punishment(惩罚)";
-                case LockSelfBan: return "selfban(自助封禁)";
-                case LockInactive: return "inactive(长期未上线)";
-                default: return "none(正常)";
+                case LockPunishment: return L.T("punishment(惩罚)", "punishment");
+                case LockSelfBan: return L.T("selfban(自助封禁)", "selfban");
+                case LockInactive: return L.T("inactive(长期未上线)", "inactive");
+                default: return L.T("none(正常)", "none");
             }
         }
 
@@ -966,7 +998,7 @@ namespace Expas
                 string desired = prefix + p.Nickname;
                 if (p.DisplayName != desired) p.DisplayName = desired;
             }
-            catch (Exception ex) { Logger.Info($"[EXPAS] 名前缀失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Info(L.T($"[EXPAS] 名前缀失败: {ex.Message}", $"[EXPAS] Name prefix failed: {ex.Message}")); }
         }
 
         public string GetIconString(PlayerData d)
@@ -1031,11 +1063,11 @@ namespace Expas
                     if (_saveTimer >= Mathf.Max(10f, Config.AutoSave))
                     {
                         _saveTimer = 0f;
-                        FlushAll("自动保存");
+                        FlushAll(L.T("自动保存", "auto save"));
                         MarkLongOfflinePass();
                     }
                 }
-                catch (Exception ex) { Logger.Warn($"[EXPAS] HUD 循环异常: {ex.Message}"); }
+                catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] HUD 循环异常: {ex.Message}", $"[EXPAS] HUD loop error: {ex.Message}")); }
                 yield return Timing.WaitForSeconds(interval);
             }
         }
@@ -1088,21 +1120,25 @@ namespace Expas
             string end = "</color>";
 
             // 第1行(蓝)
-            sb.AppendLine($"{blue}欢迎 {p.Nickname} 进入到 {Config.ServerName}{end}");
+            sb.AppendLine(L.T($"{blue}欢迎 {p.Nickname} 进入到 {Config.ServerName}{end}", $"{blue}Welcome {p.Nickname} to {Config.ServerName}{end}"));
 
             // 第2行: 游玩天数 / 时间段 / 准确游玩时间
             int days = DaysSince(d.FirstSeen, DateTime.UtcNow);
             double playSec = d.PlaySeconds;
             if (_sessionStart.TryGetValue(d.UserId, out DateTime start))
                 playSec += (DateTime.UtcNow - start).TotalSeconds;
-            sb.AppendLine($"当前已经游玩了 {days} 天  当前时间段是 {GetTimeZoneLabel()} {GetLocalTimeText()}" +
-                          $"  您准确的游玩时间是 {FormatDuration(playSec)}");
+            sb.AppendLine(L.T($"当前已经游玩了 {days} 天  当前时间段是 {GetTimeZoneLabel()} {GetLocalTimeText()}",
+                              $"Played {days} days  Local time {GetTimeZoneLabel()} {GetLocalTimeText()}") +
+                          L.T($"  您准确的游玩时间是 {FormatDuration(playSec)}",
+                              $"  Total playtime {FormatDuration(playSec)}"));
 
             // 第3行: 回合伤害 / 当前角色伤害 / 总伤害
             string lockNote = d.LockState == LockSelfBan && d.PendingDamage > 0f
-                ? $" {grey}(封禁中 +{d.PendingDamage:F0}){end}" : string.Empty;
-            sb.AppendLine($"当前回合已造成 {GetRoundDmg(d.UserId):F0}  当前使用的角色已造成 {GetRoleDmg(d.UserId):F0}" +
-                          $"  总伤害为 {d.TotalDamage:F0}{lockNote}");
+                ? L.T($" {grey}(封禁中 +{d.PendingDamage:F0}){end}", $" {grey}(banned +{d.PendingDamage:F0}){end}") : string.Empty;
+            sb.AppendLine(L.T($"当前回合已造成 {GetRoundDmg(d.UserId):F0}  当前使用的角色已造成 {GetRoleDmg(d.UserId):F0}",
+                              $"Round damage {GetRoundDmg(d.UserId):F0}  Role damage {GetRoleDmg(d.UserId):F0}") +
+                          L.T($"  总伤害为 {d.TotalDamage:F0}{lockNote}",
+                              $"  Total damage {d.TotalDamage:F0}{lockNote}"));
 
             // 第4行: 版本 + 图标
             sb.AppendLine($"{grey}EXPAS v{PluginVersion}{end}{GetIconString(d)}");
@@ -1110,8 +1146,8 @@ namespace Expas
             // 等级块(默认右下角; SSS 面板里可改对齐)
             float need = ExpNeeded(d.Level);
             sb.Append($"<align={AlignTag(GetLevelAlign(d))}>");
-            sb.AppendLine($"{blue}您当前有 {d.Level} 级{end}");
-            sb.Append($"距离下一次升级还差 {Mathf.Max(0f, need - d.Exp):F0} 经验");
+            sb.AppendLine(L.T($"{blue}您当前有 {d.Level} 级{end}", $"{blue}Level {d.Level}{end}"));
+            sb.Append(L.T($"距离下一次升级还差 {Mathf.Max(0f, need - d.Exp):F0} 经验", $"{Mathf.Max(0f, need - d.Exp):F0} EXP to next level"));
             sb.Append("</align>");
 
             // v1.5 击杀确认: 未过期的击杀块追加到 HUD 末尾(与模板版 BuildHudTemplated 同一处理)
@@ -1180,23 +1216,31 @@ namespace Expas
     {
         public string Command => "EXPAS";
         public string[] Aliases => new[] { "expsr", "expr" };
-        public string Description => "EXPAS 经验扩展插件系统: 经验/称号/音频/状态 (Experience, eXtended Plugins, Audio, and Status System)";
+        public string Description => L.T("EXPAS 经验扩展插件系统: 经验/称号/音频/状态 (Experience, eXtended Plugins, Audio, and Status System)", "EXPAS experience extension plugin system: EXP/Title/Audio/Status (Experience, eXtended Plugins, Audio, and Status System)");
         public string[] Usage => new[]
         {
-            "<子命令> [参数]                    输入 EXPAS 看总览; EXPAS <关键字> 匹配(如 EXPAS se)",
-            "set|add <玩家ID> <字段> <值>       字段: level exp points lock total_damage total_kills played_days today_play_time total_play_time",
-            "info|lock|unlock|full|reset <玩家ID>   查询 / 锁定(0-3) / 解锁 / 惩罚 / 清空数据",
-            "title <玩家ID> <0|1|2|3> [文本]    称号: 0不干预 1无称号才设 2强制替换 3彻底清除",
-            "audio play <文件.wav>|list|stop|call   音频播放 | mvpmusic list|play <玩家ID>   第一名音乐盒",
-            "layout|whitelist|arsa|config|time|line|custom|mvp|top|api|save|help   其它(详 EXPAS <关键字>)",
-            "<玩家ID> 三种写法: ①序列ID(如 3) ②玩家名(可只写一部分) ③Steam64/UserId; ①②需在线, ③离线也能改",
-            "① ② ③ 的开关在 config.yml: lookup_by_seq_id / lookup_by_name / lookup_by_steam / name_lookup_contains"
+            L.T("<子命令> [参数]                    输入 EXPAS 看总览; EXPAS <关键字> 匹配(如 EXPAS se)",
+                "<subcommand> [args]                Type EXPAS for an overview; EXPAS <keyword> to match (e.g. EXPAS se)"),
+            L.T("set|add <玩家ID> <字段> <值>       字段: level exp points lock total_damage total_kills played_days today_play_time total_play_time",
+                "set|add <playerID> <field> <value>   Fields: level exp points lock total_damage total_kills played_days today_play_time total_play_time"),
+            L.T("info|lock|unlock|full|reset <玩家ID>   查询 / 锁定(0-3) / 解锁 / 惩罚 / 清空数据",
+                "info|lock|unlock|full|reset <playerID>   Query / lock (0-3) / unlock / punish / clear data"),
+            L.T("title <玩家ID> <0|1|2|3> [文本]    称号: 0不干预 1无称号才设 2强制替换 3彻底清除",
+                "title <playerID> <0|1|2|3> [text]    Title: 0 do nothing 1 set only if none 2 force replace 3 clear completely"),
+            L.T("audio play <文件.wav>|list|stop|call   音频播放 | mvpmusic list|play <玩家ID>   第一名音乐盒",
+                "audio play <file.wav>|list|stop|call   Audio playback | mvpmusic list|play <playerID>   MVP music"),
+            L.T("layout|whitelist|arsa|config|time|line|custom|mvp|top|api|save|help   其它(详 EXPAS <关键字>)",
+                "layout|whitelist|arsa|config|time|line|custom|mvp|top|api|save|help   Others (see EXPAS <keyword>)"),
+            L.T("<玩家ID> 三种写法: ①序列ID(如 3) ②玩家名(可只写一部分) ③Steam64/UserId; ①②需在线, ③离线也能改",
+                "<playerID> three forms: ① sequence ID (e.g. 3) ② player name (partial allowed) ③ Steam64/UserId; ① and ② require online, ③ works offline"),
+            L.T("① ② ③ 的开关在 config.yml: lookup_by_seq_id / lookup_by_name / lookup_by_steam / name_lookup_contains",
+                "Toggles for ① ② ③ are in config.yml: lookup_by_seq_id / lookup_by_name / lookup_by_steam / name_lookup_contains")
         };
 
         public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
         {
             ExpasPlugin pl = ExpasPlugin.Instance;
-            if (pl == null) { response = "EXPAS 未启用"; return false; }
+            if (pl == null) { response = L.T("EXPAS 未启用", "EXPAS is not enabled"); return false; }
 
             if (arguments.Count < 1)
             {

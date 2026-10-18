@@ -28,6 +28,7 @@ using System.Linq;
 using System.Text;
 using UserSettings.ServerSpecific;
 using UnityEngine;
+using L = Expas.ExpasLang;
 using Logger = LabApi.Features.Console.Logger;
 
 namespace Expas
@@ -102,9 +103,10 @@ namespace Expas
                 ServerSpecificSettingsSync.ServerOnSettingValueReceived += OnSssValue;
                 ServerSpecificSettingsSync.ServerOnStatusReceived += OnSssStatus;
                 _sssRegistered = true;
-                Logger.Info("[EXPAS] SSS 面板已注册(HUD 字号/屏幕缩放/位置/分辨率档/自定义 UI 可由玩家自调)");
+                Logger.Info(L.T("[EXPAS] SSS 面板已注册(HUD 字号/屏幕缩放/位置/分辨率档/自定义 UI 可由玩家自调)",
+                    "[EXPAS] SSS panel registered (players can adjust HUD font size/screen scale/position/resolution preset/custom UI)"));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] SSS 注册失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] SSS 注册失败: {ex.Message}", $"[EXPAS] SSS registration failed: {ex.Message}")); }
         }
 
         private void UnregisterSss()
@@ -164,7 +166,7 @@ namespace Expas
                 ServerSpecificSettingsSync.SendToPlayer(hub, others.Concat(mine).ToArray());
                 if (p.UserId != null) _menuSentTo.Add(p.UserId);   // 已个性化下发过 → 打开面板不再补发
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] SSS 菜单下发失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] SSS 菜单下发失败: {ex.Message}", $"[EXPAS] Failed to send SSS menu: {ex.Message}")); }
         }
 
         /// <summary>
@@ -182,8 +184,9 @@ namespace Expas
                 if (string.Equals(keys[i], cur, StringComparison.OrdinalIgnoreCase)) { initIdx = i; break; }
             var withPicker = _menuBase.Concat(new ServerSpecificSettingBase[]
             {
-                new SSDropdownSetting(SssIdLayout, "自定义 UI", names, initIdx,
-                    hint: "选择 HUD 布局(来自 configs\\<端口>\\EXPAS\\layouts\\*.txt / *.js); 默认 = 默认布局")
+                new SSDropdownSetting(SssIdLayout, L.T("自定义 UI", "Custom UI"), names, initIdx,
+                    hint: L.T("选择 HUD 布局(来自 configs\\<端口>\\EXPAS\\layouts\\*.txt / *.js); 默认 = 默认布局",
+                        "Choose a HUD layout (from configs\\<port>\\EXPAS\\layouts\\*.txt / *.js); Default = default layout"))
             }).ToArray();
             return withPicker;
         }
@@ -204,7 +207,7 @@ namespace Expas
             for (int i = 0; i < all.Length; i++)
             {
                 HudLayoutDef def;
-                if (string.Equals(all[i], "default", StringComparison.OrdinalIgnoreCase)) names[i] = "默认";
+                if (string.Equals(all[i], "default", StringComparison.OrdinalIgnoreCase)) names[i] = L.T("默认", "Default");
                 else if (_layouts.TryGetValue(all[i], out def) && def != null && !string.IsNullOrEmpty(def.DisplayName))
                     names[i] = def.DisplayName;
                 else names[i] = all[i];
@@ -229,7 +232,7 @@ namespace Expas
                     ResendSssMenusToAll();
                 }
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] SSS 菜单重建失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] SSS 菜单重建失败: {ex.Message}", $"[EXPAS] Failed to rebuild SSS menu: {ex.Message}")); }
         }
 
         /// <summary>v1.7: 给每个在线真人玩家单独下发"他那套"菜单(白名单 → 含自定义 UI 下拉)。</summary>
@@ -240,7 +243,7 @@ namespace Expas
                 foreach (Player p in Player.ReadyList.Where(x => x != null && !x.IsDestroyed && x.IsPlayer && !x.IsDummy))
                     SendSssMenuTo(p);
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] SSS 菜单重发失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] SSS 菜单重发失败: {ex.Message}", $"[EXPAS] Failed to resend SSS menu: {ex.Message}")); }
         }
 
         /// <param name="keys">非 null 且长度>1 时, 追加「自定义 UI」下拉(选项 = keys, 初始选中 index 0=default)。</param>
@@ -251,44 +254,44 @@ namespace Expas
             //   ExtendOnEntry / CollapsedByDefault / ExtendedByDefault
             // v1.7: 文本区实例只在第一次创建(重建菜单时复用, SettingId 保持不变)
             if (_myDataArea == null)
-                _myDataArea = new SSTextArea(SssIdMyData, "正在载入...",
-                    SSTextArea.FoldoutMode.CollapsedByDefault, "EXPAS 我的数据 / HUD 设置");
+                _myDataArea = new SSTextArea(SssIdMyData, L.T("正在载入...", "Loading..."),
+                    SSTextArea.FoldoutMode.CollapsedByDefault, L.T("EXPAS 我的数据 / HUD 设置", "EXPAS My Data / HUD Settings"));
             // 击杀/积分单独注册一个文本区 —— 每个 UI 独立注册, 互不干扰
             if (_killFeedArea == null && Config.KillFeedPanel)
-                _killFeedArea = new SSTextArea(SssIdKillFeed, "击杀/积分: 暂无记录",
-                    SSTextArea.FoldoutMode.CollapsedByDefault, "EXPAS 击杀与积分(独立文本区)");
+                _killFeedArea = new SSTextArea(SssIdKillFeed, L.T("击杀/积分: 暂无记录", "Kills/Points: No records yet"),
+                    SSTextArea.FoldoutMode.CollapsedByDefault, L.T("EXPAS 击杀与积分(独立文本区)", "EXPAS Kills & Points (separate text area)"));
 
             var menu = new ServerSpecificSettingBase[]
             {
                 _myDataArea,
-                new SSGroupHeader("HUD 显示", false, "只改你自己的界面, 按 Steam64 记住"),
-                new SSDropdownSetting(SssIdHudEnabled, "HUD 开关",
-                    new[] { "开", "关" }, 0, hint: "关掉后你自己的 EXPAS HUD 不再显示"),
-                new SSSliderSetting(SssIdSize, "字号", 40f, 160f, 85f, integer: true,
-                    valueToStringFormat: "0", finalDisplayFormat: "{0}%", hint: "文字大小, 100%=游戏默认"),
-                new SSSliderSetting(SssIdScreen, "屏幕缩放", 50f, 150f, 100f, integer: true,
+                new SSGroupHeader(L.T("HUD 显示", "HUD Display"), false, L.T("只改你自己的界面, 按 Steam64 记住", "Only changes your own UI, remembered by Steam64")),
+                new SSDropdownSetting(SssIdHudEnabled, L.T("HUD 开关", "HUD Toggle"),
+                    new[] { L.T("开", "On"), L.T("关", "Off") }, 0, hint: L.T("关掉后你自己的 EXPAS HUD 不再显示", "When off, your EXPAS HUD is no longer shown")),
+                new SSSliderSetting(SssIdSize, L.T("字号", "Font Size"), 40f, 160f, 85f, integer: true,
+                    valueToStringFormat: "0", finalDisplayFormat: "{0}%", hint: L.T("文字大小, 100%=游戏默认", "Text size, 100% = game default")),
+                new SSSliderSetting(SssIdScreen, L.T("屏幕缩放", "Screen Scale"), 50f, 150f, 100f, integer: true,
                     valueToStringFormat: "0", finalDisplayFormat: "{0}%",
-                    hint: "整块 HUD 的缩放(与字号相乘), 大屏想让文字更小时往小调"),
+                    hint: L.T("整块 HUD 的缩放(与字号相乘), 大屏想让文字更小时往小调", "Scales the whole HUD (multiplied with font size); lower it on big screens for smaller text")),
                 // v1.6 新增: 整体缩放(在「字号×屏幕缩放」之外再乘一次)
-                new SSSliderSetting(SssIdGlobalScale, "整体缩放", 50f, 200f, 100f, integer: true,
+                new SSSliderSetting(SssIdGlobalScale, L.T("整体缩放", "Overall Scale"), 50f, 200f, 100f, integer: true,
                     valueToStringFormat: "0", finalDisplayFormat: "{0}%",
-                    hint: "在「字号×屏幕缩放」之外再整体缩放一次(默认100%), 想一键放大/缩小整个 HUD 就用它"),
-                new SSSliderSetting(SssIdLineHeight, "行距", 60f, 140f, 100f, integer: true,
-                    valueToStringFormat: "0", finalDisplayFormat: "{0}%", hint: "行与行的间隔, 小于100更紧凑"),
-                new SSSliderSetting(SssIdVOffset, "垂直位置", -200f, 200f, 0f, integer: true,
-                    valueToStringFormat: "0", finalDisplayFormat: "{0}", hint: "负=整体上移, 正=整体下移(像素级微调)"),
-                new SSDropdownSetting(SssIdAlign, "水平对齐",
-                    new[] { "左", "居中", "右" }, 1, hint: "整块 HUD 的对齐方式"),
-                new SSDropdownSetting(SssIdLevelAlign, "等级块对齐",
-                    new[] { "左", "居中", "右", "跟随上面" }, 2, hint: "右下角那块等级/经验的对齐"),
+                    hint: L.T("在「字号×屏幕缩放」之外再整体缩放一次(默认100%), 想一键放大/缩小整个 HUD 就用它", "Applies an extra overall scale on top of font size × screen scale (default 100%); use it to enlarge/shrink the whole HUD at once")),
+                new SSSliderSetting(SssIdLineHeight, L.T("行距", "Line Height"), 60f, 140f, 100f, integer: true,
+                    valueToStringFormat: "0", finalDisplayFormat: "{0}%", hint: L.T("行与行的间隔, 小于100更紧凑", "Spacing between lines; below 100 is more compact")),
+                new SSSliderSetting(SssIdVOffset, L.T("垂直位置", "Vertical Offset"), -200f, 200f, 0f, integer: true,
+                    valueToStringFormat: "0", finalDisplayFormat: "{0}", hint: L.T("负=整体上移, 正=整体下移(像素级微调)", "Negative = move up, positive = move down (pixel fine-tuning)")),
+                new SSDropdownSetting(SssIdAlign, L.T("水平对齐", "Horizontal Align"),
+                    new[] { L.T("左", "Left"), L.T("居中", "Center"), L.T("右", "Right") }, 1, hint: L.T("整块 HUD 的对齐方式", "Alignment of the whole HUD")),
+                new SSDropdownSetting(SssIdLevelAlign, L.T("等级块对齐", "Level Block Align"),
+                    new[] { L.T("左", "Left"), L.T("居中", "Center"), L.T("右", "Right"), L.T("跟随上面", "Follow above") }, 2, hint: L.T("右下角那块等级/经验的对齐", "Alignment of the level/EXP block at the bottom right")),
                 // v1.6 新增: HUD 折叠 + 屏幕分辨率档位(v1.7 档位扩到 16 档)
-                new SSDropdownSetting(SssIdCollapse, "HUD 折叠",
-                    new[] { "展开", "折叠" }, 0,
-                    hint: "折叠时屏幕 HUD 只显示一行(hud_collapsed_line 模板); 击杀提示仍然显示"),
-                new SSDropdownSetting(SssIdResolution, "屏幕分辨率",
+                new SSDropdownSetting(SssIdCollapse, L.T("HUD 折叠", "HUD Collapse"),
+                    new[] { L.T("展开", "Expanded"), L.T("折叠", "Collapsed") }, 0,
+                    hint: L.T("折叠时屏幕 HUD 只显示一行(hud_collapsed_line 模板); 击杀提示仍然显示", "When collapsed, the screen HUD shows only one line (hud_collapsed_line template); kill notices still show")),
+                new SSDropdownSetting(SssIdResolution, L.T("屏幕分辨率", "Screen Resolution"),
                     ResolutionLabels, 0,
-                    hint: "服务端读不到像素分辨率, 只能读宽高比; 「自动检测」按宽高比给倍率, 也可按自己的屏幕手动选档"),
-                new SSButton(SssIdReset, "重置本机 HUD 设置", "重置", 1f)
+                    hint: L.T("服务端读不到像素分辨率, 只能读宽高比; 「自动检测」按宽高比给倍率, 也可按自己的屏幕手动选档", "The server cannot read pixel resolution, only aspect ratio; Auto Detect scales by aspect ratio, or pick a preset matching your screen")),
+                new SSButton(SssIdReset, L.T("重置本机 HUD 设置", "Reset Local HUD Settings"), L.T("重置", "Reset"), 1f)
             };
 
             // v1.8: 「自定义 UI」下拉 —— 由调用方(BuildSssMenuFor)按玩家归属动态传入 keys; 不传就没有这一项
@@ -296,9 +299,9 @@ namespace Expas
             {
                 menu = menu.Concat(new ServerSpecificSettingBase[]
                 {
-                    new SSDropdownSetting(SssIdLayout, "自定义 UI",
+                    new SSDropdownSetting(SssIdLayout, L.T("自定义 UI", "Custom UI"),
                         keys, 0,
-                        hint: "选择 HUD 布局(来自 configs\\<端口>\\EXPAS\\layouts\\*.txt / *.js); 默认 = 默认布局")
+                        hint: L.T("选择 HUD 布局(来自 configs\\<端口>\\EXPAS\\layouts\\*.txt / *.js); 默认 = 默认布局", "Choose a HUD layout (from configs\\<port>\\EXPAS\\layouts\\*.txt / *.js); Default = default layout"))
                 }).ToArray();
             }
 
@@ -386,11 +389,11 @@ namespace Expas
                             // 用与下发完全一致的 LayoutPickerEntries 做 index→key 映射(顺序稳定);
                             // 二次校验: 越界/伪造/无权一律回落 default
                             string[] pKeys, pNames;
-                            if (!LayoutPickerEntries(d, out pKeys, out pNames)) { d.HudLayout = "default"; Logger.Info($"[EXPAS] SSS 布局选择: {p.Nickname}({p.UserId}) 无可选布局 → default"); break; }
+                            if (!LayoutPickerEntries(d, out pKeys, out pNames)) { d.HudLayout = "default"; Logger.Info(L.T($"[EXPAS] SSS 布局选择: {p.Nickname}({p.UserId}) 无可选布局 → default", $"[EXPAS] SSS layout selection: {p.Nickname}({p.UserId}) no available layouts → default")); break; }
                             int pIdx = Mathf.Clamp(ly.SyncSelectionIndexValidated, 0, pKeys.Length - 1);
                             string pWant = pKeys[pIdx];
                             d.HudLayout = CanUseLayout(d, pWant) ? pWant : "default";
-                            Logger.Info($"[EXPAS] SSS 布局选择: {p.Nickname}({p.UserId}) index={ly.SyncSelectionIndexValidated} → {d.HudLayout} (下拉选项: {string.Join("/", pNames)})");
+                            Logger.Info(L.T($"[EXPAS] SSS 布局选择: {p.Nickname}({p.UserId}) index={ly.SyncSelectionIndexValidated} → {d.HudLayout} (下拉选项: {string.Join("/", pNames)})", $"[EXPAS] SSS layout selection: {p.Nickname}({p.UserId}) index={ly.SyncSelectionIndexValidated} → {d.HudLayout} (options: {string.Join("/", pNames)})"));
                         }
                         break;
                     case SssIdReset:
@@ -412,7 +415,7 @@ namespace Expas
                             // UI 隔离(与下面"立刻刷一次 HUD"同一判据): HudSurface 0=关闭屏幕 HUD,
                             // 这时不占用全局唯一的 Hint 通道, 免得顶掉别的插件
                             if (Config.HudSurface != 0)
-                                p.SendHint("<color=#55FF55>【EXPAS】HUD 设置已重置</color>", 3f);
+                                p.SendHint(L.T("<color=#55FF55>【EXPAS】HUD 设置已重置</color>", "<color=#55FF55>[EXPAS] HUD settings reset</color>"), 3f);
                         }
                         break;
                     default:
@@ -443,7 +446,7 @@ namespace Expas
                         p.SendHint(BuildHud(p, d), Mathf.Max(Config.HudClear, Config.HudInterval + 0.3f));
                 }
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] SSS 回调异常: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] SSS 回调异常: {ex.Message}", $"[EXPAS] SSS callback error: {ex.Message}")); }
         }
 
         // ========================================================================
@@ -460,20 +463,29 @@ namespace Expas
 
                 string head = BuildPanelHudText(p, d);
                 string text = (string.IsNullOrEmpty(head) ? string.Empty : head + "\n---\n") +
-                    $"等级: {d.Level}    经验: {d.Exp:F0}/{ExpNeeded(d.Level):F0}\n" +
-                    $"距离下一级还差: {Mathf.Max(0f, ExpNeeded(d.Level) - d.Exp):F0}\n" +
-                    $"累计经验: {d.TotalExp:F0}    总伤害: {d.TotalDamage:F0}\n" +
-                    $"击杀: {d.Kills}    死亡: {d.Deaths}\n" +
-                    $"游玩: {FormatDuration(playSec)}    {GetTimeZoneLabel()} {GetLocalTimeText()}\n" +
-                    $"状态: {GetStatusText(d)}" +
-                    (d.PendingExp > 0f ? $"    待入账经验: {d.PendingExp:F0}" : string.Empty) +
+                    L.T($"等级: {d.Level}    经验: {d.Exp:F0}/{ExpNeeded(d.Level):F0}\n",
+                        $"Level: {d.Level}    EXP: {d.Exp:F0}/{ExpNeeded(d.Level):F0}\n") +
+                    L.T($"距离下一级还差: {Mathf.Max(0f, ExpNeeded(d.Level) - d.Exp):F0}\n",
+                        $"EXP to next level: {Mathf.Max(0f, ExpNeeded(d.Level) - d.Exp):F0}\n") +
+                    L.T($"累计经验: {d.TotalExp:F0}    总伤害: {d.TotalDamage:F0}\n",
+                        $"Total EXP: {d.TotalExp:F0}    Total Damage: {d.TotalDamage:F0}\n") +
+                    L.T($"击杀: {d.Kills}    死亡: {d.Deaths}\n",
+                        $"Kills: {d.Kills}    Deaths: {d.Deaths}\n") +
+                    L.T($"游玩: {FormatDuration(playSec)}    {GetTimeZoneLabel()} {GetLocalTimeText()}\n",
+                        $"Played: {FormatDuration(playSec)}    {GetTimeZoneLabel()} {GetLocalTimeText()}\n") +
+                    L.T($"状态: {GetStatusText(d)}", $"Status: {GetStatusText(d)}") +
+                    (d.PendingExp > 0f ? L.T($"    待入账经验: {d.PendingExp:F0}", $"    Pending EXP: {d.PendingExp:F0}") : string.Empty) +
                     // v1.6: 显示"检测到的宽高比 + 当前分辨率档位 + 整体缩放 + 最终字号 + 排版"
                     //   ★ 服务端读不到像素分辨率, 只能读宽高比/视野 → 这里显示的是宽高比标签, 不是像素
-                    $"\n屏幕: 宽高比 {GetAspectLabel(p)}    分辨率档位 {ResolutionPresetName(GetResolutionPreset(d))}    整体缩放 {GetGlobalScalePercent(d)}%\n" +
-                    $"积分: {d.Points:F0}" +
-                    $"\nHUD: {(IsHudOff(d.UserId) ? "关闭" : "开启")}  排版 {(IsHudCollapsed(d) ? "折叠(单行)" : "展开")}  最终字号 {FinalSizePercent(p, d)}%  " +
-                    $"字号 {GetSizePercent(d)}%  屏幕 {GetScreenPercent(d)}%  行距 {GetLineHeightPercent(d)}%  " +
-                    $"垂直 {GetVOffset(d)}  对齐 {AlignName(GetHAlign(d))}/{AlignName(GetLevelAlign(d))}";
+                    L.T($"\n屏幕: 宽高比 {GetAspectLabel(p)}    分辨率档位 {ResolutionPresetName(GetResolutionPreset(d))}    整体缩放 {GetGlobalScalePercent(d)}%\n",
+                        $"\nScreen: Aspect {GetAspectLabel(p)}    Resolution {ResolutionPresetName(GetResolutionPreset(d))}    Scale {GetGlobalScalePercent(d)}%\n") +
+                    L.T($"积分: {d.Points:F0}", $"Points: {d.Points:F0}") +
+                    L.T($"\nHUD: {(IsHudOff(d.UserId) ? "关闭" : "开启")}  排版 {(IsHudCollapsed(d) ? "折叠(单行)" : "展开")}  最终字号 {FinalSizePercent(p, d)}%  ",
+                        $"\nHUD: {(IsHudOff(d.UserId) ? "Off" : "On")}  Layout {(IsHudCollapsed(d) ? "Collapsed (single line)" : "Expanded")}  Final Font Size {FinalSizePercent(p, d)}%  ") +
+                    L.T($"字号 {GetSizePercent(d)}%  屏幕 {GetScreenPercent(d)}%  行距 {GetLineHeightPercent(d)}%  ",
+                        $"Font Size {GetSizePercent(d)}%  Screen {GetScreenPercent(d)}%  Line Height {GetLineHeightPercent(d)}%  ") +
+                    L.T($"垂直 {GetVOffset(d)}  对齐 {AlignName(GetHAlign(d))}/{AlignName(GetLevelAlign(d))}",
+                        $"Offset {GetVOffset(d)}  Align {AlignName(GetHAlign(d))}/{AlignName(GetLevelAlign(d))}");
 
                 // SSTextArea.SendTextUpdate 不带 receiveFilter 时底层走 SendToAuthenticated() = 发全服,
                 // 多人同服时所有人都会看到"最后一个被刷新的玩家"的数据 → 必须只发给本人
@@ -488,10 +500,10 @@ namespace Expas
         {
             switch (a)
             {
-                case 0: return "左";
-                case 2: return "右";
-                case 3: return "跟随";
-                default: return "居中";
+                case 0: return L.T("左", "Left");
+                case 2: return L.T("右", "Right");
+                case 3: return L.T("跟随", "Follow");
+                default: return L.T("居中", "Center");
             }
         }
 
@@ -500,12 +512,12 @@ namespace Expas
             // v1.6: 图标统一走 LockIcon(修 unicode 缺字, 默认 [锁]/[禁]/[离])
             switch (d.LockState)
             {
-                case LockPunishment: return $"{LockIcon(LockPunishment)} punishment 惩罚锁定(伤害/经验都不记录)";
-                case LockSelfBan: return $"{LockIcon(LockSelfBan)} selfban 自助封禁(伤害不涨, 经验在叠加)";
-                case LockInactive: return $"{LockIcon(LockInactive)} inactive 长期未上线(回来自动清回 none)";
+                case LockPunishment: return L.T($"{LockIcon(LockPunishment)} punishment 惩罚锁定(伤害/经验都不记录)", $"{LockIcon(LockPunishment)} punishment Punishment lock (damage/EXP not recorded)");
+                case LockSelfBan: return L.T($"{LockIcon(LockSelfBan)} selfban 自助封禁(伤害不涨, 经验在叠加)", $"{LockIcon(LockSelfBan)} selfban Self-ban (damage does not increase, EXP accumulates)");
+                case LockInactive: return L.T($"{LockIcon(LockInactive)} inactive 长期未上线(回来自动清回 none)", $"{LockIcon(LockInactive)} inactive Inactive (auto-clears to none on return)");
             }
-            if (d.LongOffline) return $"{LockIcon(LockInactive)} 长期未上线";
-            return "正常";
+            if (d.LongOffline) return L.T($"{LockIcon(LockInactive)} 长期未上线", $"{LockIcon(LockInactive)} Inactive");
+            return L.T("正常", "Normal");
         }
 
         // ========================================================================
@@ -581,7 +593,8 @@ namespace Expas
             if (Mathf.Abs(a - 16f / 10f) <= 0.06f) return "16:10";
             if (a >= 2.05f) return "21:9";                                    // 超宽(21:9≈2.33)及以上
             if (Mathf.Abs(a - 4f / 3f) <= 0.06f) return "4:3";
-            return "其它(" + a.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ")";
+            return L.T("其它(" + a.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ")",
+                       "Other (" + a.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + ")");
         }
 
         /// <summary>屏幕宽高比标签(取不到时 "-"), 供 {aspect} 占位符与面板显示。</summary>
@@ -610,9 +623,9 @@ namespace Expas
         //     1920x1080 1.00         1920x1200 0.95         2560x1080 0.87
         //     2560x1440 0.75         3440x1440 0.65         3840x2160 0.50→0.60(夹)
         // ========================================================================
-        public static readonly string[] ResolutionLabels = new[]
+        public static string[] ResolutionLabels => new[]
         {
-            "自动检测", "640x480", "800x600", "1024x768", "1280x720", "1280x800", "1366x768",
+            L.T("自动检测", "Auto Detect"), "640x480", "800x600", "1024x768", "1280x720", "1280x800", "1366x768",
             "1440x900", "1600x900", "1680x1050", "1920x1080", "1920x1200", "2560x1080",
             "2560x1440", "3440x1440", "3840x2160(4K)"
         };
@@ -645,7 +658,7 @@ namespace Expas
         /// <summary>分辨率档位名(面板/日志显示用)。</summary>
         public static string ResolutionPresetName(int preset)
         {
-            if (preset < 0 || preset >= ResolutionLabels.Length) return "自动检测";
+            if (preset < 0 || preset >= ResolutionLabels.Length) return L.T("自动检测", "Auto Detect");
             return ResolutionLabels[preset];
         }
 
@@ -729,7 +742,7 @@ namespace Expas
         public class HudLayoutDef
         {
             public string Key = "default";
-            public string DisplayName = "默认布局";
+            public string DisplayName = L.T("默认布局", "Default Layout");
             public bool FromFile = false;      // true = 来自磁盘文件; false = 内置默认
             public string SourcePath = string.Empty;
             /// <summary>归属 Steam64(CanonUserId 归一化; 空=公共文件, 只有白名单玩家可见)。</summary>
@@ -742,34 +755,34 @@ namespace Expas
         }
 
         /// <summary>内置默认布局的原文(= 首次运行写出的 layouts\default.txt 内容)。</summary>
-        public static readonly string[] DefaultLayoutLines = new[]
+        public static string[] DefaultLayoutLines => new[]
         {
-            "# EXPAS HUD 布局文件(必须 UTF-8)",
-            "name = 默认布局",
-            "# 主块: 默认贴在屏幕最下方居中, 每排自上而下叠加",
-            "# 格式: row|<left|center|right>|<垂直偏移px>|<文本(支持全部占位符)>",
-            "row|center|-0|#1 欢迎 {name} 进入到 {server}",
-            "row|center|-32|#2 当前已经游玩了 {days} 天  当前时间段是 {tz} {clock}  您准确的游玩时间是 {playtime}",
-            "row|center|-64|#3 当前回合已造成 {roundDmg}  当前使用的角色已造成 {roleDmg}  总伤害为 {totalDmg}",
+            L.T("# EXPAS HUD 布局文件(必须 UTF-8)", "# EXPAS HUD layout file (must be UTF-8)"),
+            L.T("name = 默认布局", "name = Default Layout"),
+            L.T("# 主块: 默认贴在屏幕最下方居中, 每排自上而下叠加", "# Main block: anchored bottom-center by default; rows stack top to bottom"),
+            L.T("# 格式: row|<left|center|right>|<垂直偏移px>|<文本(支持全部占位符)>", "# Format: row|<left|center|right>|<vertical offset px>|<text (all placeholders supported)>"),
+            L.T("row|center|-0|#1 欢迎 {name} 进入到 {server}", "row|center|-0|#1 Welcome {name} to {server}"),
+            L.T("row|center|-32|#2 当前已经游玩了 {days} 天  当前时间段是 {tz} {clock}  您准确的游玩时间是 {playtime}", "row|center|-32|#2 Played {days} days  Local time {tz} {clock}  Total playtime {playtime}"),
+            L.T("row|center|-64|#3 当前回合已造成 {roundDmg}  当前使用的角色已造成 {roleDmg}  总伤害为 {totalDmg}", "row|center|-64|#3 Round damage {roundDmg}  Role damage {roleDmg}  Total damage {totalDmg}"),
             "row|center|-96|#4 EXPAS v{version}{icons}",
-            "# 等级块: 默认右下方, 且比主块再往上一点",
-            "level|right|40|您当前有 {level} 级",
-            "level|right|16|距离下一次升级还差 {expNeed} 经验"
+            L.T("# 等级块: 默认右下方, 且比主块再往上一点", "# Level block: bottom right by default, a bit higher than the main block"),
+            L.T("level|right|40|您当前有 {level} 级", "level|right|40|Level {level}"),
+            L.T("level|right|16|距离下一次升级还差 {expNeed} 经验", "level|right|16|{expNeed} EXP to next level")
         };
 
         /// <summary>示例自定义布局的原文(首次运行写出的 layouts\example.txt 内容)。</summary>
-        public static readonly string[] ExampleLayoutLines = new[]
+        public static string[] ExampleLayoutLines => new[]
         {
-            "# EXPAS HUD 布局文件(必须 UTF-8)",
-            "name = 示例布局(左上角竖排 + 右侧等级块)",
-            "# 主块: 这里演示左对齐 + 高偏移(数值越大越靠上)",
-            "row|left|120|欢迎 {name} 进入到 {server}  (第 {days} 天)",
-            "row|left|88|当前时间段 {tz} {clock}   准确游玩时间 {playtime}",
-            "row|left|56|本回合伤害 {roundDmg}   角色伤害 {roleDmg}   总伤害 {totalDmg}",
+            L.T("# EXPAS HUD 布局文件(必须 UTF-8)", "# EXPAS HUD layout file (must be UTF-8)"),
+            L.T("name = 示例布局(左上角竖排 + 右侧等级块)", "name = Example Layout (left-top vertical + right level block)"),
+            L.T("# 主块: 这里演示左对齐 + 高偏移(数值越大越靠上)", "# Main block: demonstrates left alignment + high offset (larger = higher)"),
+            L.T("row|left|120|欢迎 {name} 进入到 {server}  (第 {days} 天)", "row|left|120|Welcome {name} to {server}  (day {days})"),
+            L.T("row|left|88|当前时间段 {tz} {clock}   准确游玩时间 {playtime}", "row|left|88|Local time {tz} {clock}   Total playtime {playtime}"),
+            L.T("row|left|56|本回合伤害 {roundDmg}   角色伤害 {roleDmg}   总伤害 {totalDmg}", "row|left|56|Round damage {roundDmg}   Role damage {roleDmg}   Total damage {totalDmg}"),
             "row|left|24|EXPAS v{version}{icons}",
-            "# 等级块: 右侧, 比主块再往上",
-            "level|right|200|Lv.{level}   经验 {exp}/{expNeed}",
-            "level|right|168|积分 {points}   击杀 {kills}   死亡 {deaths}"
+            L.T("# 等级块: 右侧, 比主块再往上", "# Level block: right side, higher than the main block"),
+            L.T("level|right|200|Lv.{level}   经验 {exp}/{expNeed}", "level|right|200|Lv.{level}   EXP {exp}/{expNeed}"),
+            L.T("level|right|168|积分 {points}   击杀 {kills}   死亡 {deaths}", "level|right|168|Points {points}   Kills {kills}   Deaths {deaths}")
         };
 
         private readonly Dictionary<string, HudLayoutDef> _layouts =
@@ -793,7 +806,7 @@ namespace Expas
             try
             {
                 HudLayoutDef builtin = ParseLayoutLines("default", DefaultLayoutLines, string.Empty);
-                builtin.DisplayName = "默认布局";
+                builtin.DisplayName = L.T("默认布局", "Default Layout");
                 builtin.FromFile = false;
                 _layouts[builtin.Key] = builtin;
 
@@ -812,17 +825,17 @@ namespace Expas
                         if (def == null || (def.Main.Count == 0 && def.Level.Count == 0
                             && def.Kill.Count == 0 && def.Fold.Count == 0 && def.Custom.Count == 0))
                         {
-                            Logger.Warn($"[EXPAS] 布局文件不可用(读取失败 / 没有合法 row| / level| 行), 已忽略: {f}");
+                            Logger.Warn(L.T($"[EXPAS] 布局文件不可用(读取失败 / 没有合法 row| / level| 行), 已忽略: {f}", $"[EXPAS] Layout file unusable (read failed / no valid row| or level| lines), skipped: {f}"));
                             continue;
                         }
                         _layouts[key] = def;
-                        Logger.Info($"[EXPAS] 布局已载入: {key} ({def.DisplayName}) 主块 {def.Main.Count} / 等级块 {def.Level.Count} / 击杀 {def.Kill.Count} / 折叠 {def.Fold.Count} / 自定义 {def.Custom.Count} 排" +
-                                    (def.Owner.Length > 0 ? $"  归属 {def.Owner}" : string.Empty) + $" ← {f}");
+                        Logger.Info(L.T($"[EXPAS] 布局已载入: {key} ({def.DisplayName}) 主块 {def.Main.Count} / 等级块 {def.Level.Count} / 击杀 {def.Kill.Count} / 折叠 {def.Fold.Count} / 自定义 {def.Custom.Count} 排", $"[EXPAS] Layout loaded: {key} ({def.DisplayName}) main {def.Main.Count} / level {def.Level.Count} / kill {def.Kill.Count} / fold {def.Fold.Count} / custom {def.Custom.Count} rows") +
+                                    (def.Owner.Length > 0 ? L.T($"  归属 {def.Owner}", $"  owner {def.Owner}") : string.Empty) + $" ← {f}");
                     }
                 }
-                Logger.Info($"[EXPAS] 布局共 {_layouts.Count} 套: {string.Join(", ", _layouts.Keys)} (目录 {dir})");
+                Logger.Info(L.T($"[EXPAS] 布局共 {_layouts.Count} 套: {string.Join(", ", _layouts.Keys)} (目录 {dir})", $"[EXPAS] {_layouts.Count} layouts in total: {string.Join(", ", _layouts.Keys)} (directory {dir})"));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 布局扫描失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 布局扫描失败: {ex.Message}", $"[EXPAS] Layout scan failed: {ex.Message}")); }
         }
 
         /// <summary>文件不存在才写(UTF-8 **无 BOM**, 避免中文被写坏)。</summary>
@@ -833,9 +846,9 @@ namespace Expas
                 if (File.Exists(path)) return;
                 string text = string.Join("\n", lines) + "\n";
                 File.WriteAllText(path, text, new UTF8Encoding(false));   // 无 BOM
-                Logger.Info($"[EXPAS] 已生成布局文件: {path}");
+                Logger.Info(L.T($"[EXPAS] 已生成布局文件: {path}", $"[EXPAS] Generated layout file: {path}"));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 写布局文件失败 {path}: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 写布局文件失败 {path}: {ex.Message}", $"[EXPAS] Failed to write layout file {path}: {ex.Message}")); }
         }
 
         private HudLayoutDef ParseLayoutFile(string key, string path)
@@ -858,7 +871,7 @@ namespace Expas
             }
             catch (Exception ex)
             {
-                Logger.Warn($"[EXPAS] 解析布局 {path} 失败: {ex.Message}");
+                Logger.Warn(L.T($"[EXPAS] 解析布局 {path} 失败: {ex.Message}", $"[EXPAS] Failed to parse layout {path}: {ex.Message}"));
                 return null;
             }
         }
@@ -1363,7 +1376,7 @@ namespace Expas
                     // ============ 8.3 等级控制子指令 ============
                     case "addlevel":
                         {
-                            if (arguments.Count < 3) { response = "用法: EXPAS addlevel <玩家ID> <数量>"; return false; }
+                            if (arguments.Count < 3) { response = L.T("用法: EXPAS addlevel <玩家ID> <数量>", "Usage: EXPAS addlevel <player ID> <amount>"); return false; }
                             if (!ResolvePlayer(arguments.At(1), out string uid, out Player on, out _, out string rerr))
                             { response = rerr; return false; }
                             PlayerData d = GetDataById(uid);
@@ -1371,12 +1384,12 @@ namespace Expas
                             d.Level = Mathf.Clamp(d.Level + deltaLv, 1, Config.MaxLevel);
                             SavePlayer(d);
                             if (on != null) UpdateName(on, d);
-                            response = $"{d.Name} 等级 {(deltaLv >= 0 ? "+" : "")}{deltaLv} → Lv.{d.Level}";
+                            response = L.T($"{d.Name} 等级 {(deltaLv >= 0 ? "+" : "")}{deltaLv} → Lv.{d.Level}", $"{d.Name} level {(deltaLv >= 0 ? "+" : "")}{deltaLv} → Lv.{d.Level}");
                             return true;
                         }
                     case "restartlevel":
                         {
-                            if (arguments.Count < 2) { response = "用法: EXPAS restartlevel <玩家ID>"; return false; }
+                            if (arguments.Count < 2) { response = L.T("用法: EXPAS restartlevel <玩家ID>", "Usage: EXPAS restartlevel <player ID>"); return false; }
                             if (!ResolvePlayer(arguments.At(1), out string uid, out Player on, out _, out string rerr))
                             { response = rerr; return false; }
                             PlayerData d = GetDataById(uid);
@@ -1385,7 +1398,7 @@ namespace Expas
                             d.PendingExp = 0f;
                             SavePlayer(d);
                             if (on != null) UpdateName(on, d);
-                            response = $"已重置 {d.Name} 的等级: Lv.1 (当前经验清零, 累计经验 {d.TotalExp:F0} 保留)";
+                            response = L.T($"已重置 {d.Name} 的等级: Lv.1 (当前经验清零, 累计经验 {d.TotalExp:F0} 保留)", $"Reset {d.Name}'s level: Lv.1 (current EXP cleared, total EXP {d.TotalExp:F0} kept)");
                             return true;
                         }
                     case "xpfreeze":
@@ -1400,71 +1413,75 @@ namespace Expas
                             }
                             _xpFrozen = want ?? !_xpFrozen;
                             response = _xpFrozen
-                                ? "已冻结本回合经验增长(本回合不再获得任何经验, 下一回合自动恢复)"
-                                : "已解除经验冻结(经验增长恢复正常)";
-                            Logger.Info($"[EXPAS] 经验冻结 = {_xpFrozen}");
+                                ? L.T("已冻结本回合经验增长(本回合不再获得任何经验, 下一回合自动恢复)", "EXP growth frozen for this round (no EXP will be gained this round; it resumes next round)")
+                                : L.T("已解除经验冻结(经验增长恢复正常)", "EXP freeze lifted (EXP growth is back to normal)");
+                            Logger.Info(L.T($"[EXPAS] 经验冻结 = {_xpFrozen}", $"[EXPAS] EXP freeze = {_xpFrozen}"));
                             return true;
                         }
 
                     // ---------------- 玩家数据(支持昵称/RA玩家ID/Steam64/完整UserId, 离线也能改) ----------------
                     case "info":
                         {
-                            if (arguments.Count < 2) { response = "用法: EXPAS info <玩家ID>"; return false; }
+                            if (arguments.Count < 2) { response = L.T("用法: EXPAS info <玩家ID>", "Usage: EXPAS info <player ID>"); return false; }
                             if (!ResolvePlayer(arguments.At(1), out string uid, out Player on, out _, out string rerr))
                             { response = rerr; return false; }
                             PlayerData d = GetDataById(uid);
                             response =
-                                $"{d.Name}({uid}) {(on != null ? "在线" : "离线")}\n" +
-                                $"等级 Lv.{d.Level}  经验 {d.Exp:F0}/{ExpasPlugin.ExpNeeded(d.Level):F0}  累计经验 {d.TotalExp:F0}\n" +
-                                $"总伤害 {d.TotalDamage:F0}  总击杀 {d.Kills}  死亡 {d.Deaths}  积分 {d.Points:F0}\n" +
-                                $"游玩天数 {d.PlayedDays}  今日游玩 {GetTodayPlaySeconds(d):F0} 秒  总游玩 {PlaytimeText(d.PlaySeconds)}\n" +
-                                $"锁定 {LockName(d.LockState)}{LockIcon(d.LockState)}  待入账经验 {d.PendingExp:F0}\n" +
-                                $"经验冻结(本回合) {(_xpFrozen ? "是" : "否")}";
+                                L.T($"{d.Name}({uid}) {(on != null ? "在线" : "离线")}\n", $"{d.Name}({uid}) {(on != null ? "Online" : "Offline")}\n") +
+                                L.T($"等级 Lv.{d.Level}  经验 {d.Exp:F0}/{ExpasPlugin.ExpNeeded(d.Level):F0}  累计经验 {d.TotalExp:F0}\n",
+                                    $"Level Lv.{d.Level}  EXP {d.Exp:F0}/{ExpasPlugin.ExpNeeded(d.Level):F0}  Total EXP {d.TotalExp:F0}\n") +
+                                L.T($"总伤害 {d.TotalDamage:F0}  总击杀 {d.Kills}  死亡 {d.Deaths}  积分 {d.Points:F0}\n",
+                                    $"Total Damage {d.TotalDamage:F0}  Total Kills {d.Kills}  Deaths {d.Deaths}  Points {d.Points:F0}\n") +
+                                L.T($"游玩天数 {d.PlayedDays}  今日游玩 {GetTodayPlaySeconds(d):F0} 秒  总游玩 {PlaytimeText(d.PlaySeconds)}\n",
+                                    $"Played Days {d.PlayedDays}  Today {GetTodayPlaySeconds(d):F0} s  Total playtime {PlaytimeText(d.PlaySeconds)}\n") +
+                                L.T($"锁定 {LockName(d.LockState)}{LockIcon(d.LockState)}  待入账经验 {d.PendingExp:F0}\n",
+                                    $"Lock {LockName(d.LockState)}{LockIcon(d.LockState)}  Pending EXP {d.PendingExp:F0}\n") +
+                                L.T($"经验冻结(本回合) {(_xpFrozen ? "是" : "否")}", $"EXP freeze (this round) {(_xpFrozen ? "Yes" : "No")}");
                             return true;
                         }
                     case "reset":
                         {
-                            if (arguments.Count < 2) { response = "用法: EXPAS reset <玩家ID>"; return false; }
+                            if (arguments.Count < 2) { response = L.T("用法: EXPAS reset <玩家ID>", "Usage: EXPAS reset <player ID>"); return false; }
                             if (!ResolvePlayer(arguments.At(1), out string uid, out Player on, out _, out string rerr))
                             { response = rerr; return false; }
                             PlayerData d = GetDataById(uid);
                             ResetData(d);
                             if (on != null) UpdateName(on, d);
-                            response = $"已重置 {d.Name} 的全部数据";
+                            response = L.T($"已重置 {d.Name} 的全部数据", $"Reset all data for {d.Name}");
                             return true;
                         }
                     case "lock":
                         {
                             if (arguments.Count < 2)
-                            { response = "用法: EXPAS lock <玩家ID> <none|punishment|selfban|inactive|0-3>"; return false; }
+                            { response = L.T("用法: EXPAS lock <玩家ID> <none|punishment|selfban|inactive|0-3>", "Usage: EXPAS lock <player ID> <none|punishment|selfban|inactive|0-3>"); return false; }
                             if (!ResolvePlayer(arguments.At(1), out string uid, out _, out _, out string rerr))
                             { response = rerr; return false; }
                             int mode = LockSelfBan;   // 不带取值 → 默认 selfban(与旧 lock 的"自愿锁定"语义一致)
                             if (arguments.Count >= 3 && !ParseLockMode(arguments.At(2), out mode))
-                            { response = "lock 取值: 0/none, 1/punishment, 2/selfban, 3/inactive"; return false; }
+                            { response = L.T("lock 取值: 0/none, 1/punishment, 2/selfban, 3/inactive", "lock values: 0/none, 1/punishment, 2/selfban, 3/inactive"); return false; }
                             PlayerData d = GetDataById(uid);
-                            SetLock(d, mode, "管理指令");
-                            response = $"{d.Name} 锁定状态 → {LockName(mode)} {LockIcon(mode)}";
+                            SetLock(d, mode, L.T("管理指令", "Admin command"));
+                            response = L.T($"{d.Name} 锁定状态 → {LockName(mode)} {LockIcon(mode)}", $"{d.Name} lock state → {LockName(mode)} {LockIcon(mode)}");
                             return true;
                         }
                     case "unlock":
                         {
-                            if (arguments.Count < 2) { response = "用法: EXPAS unlock <玩家ID>"; return false; }
+                            if (arguments.Count < 2) { response = L.T("用法: EXPAS unlock <玩家ID>", "Usage: EXPAS unlock <player ID>"); return false; }
                             if (!ResolvePlayer(arguments.At(1), out string uid, out _, out _, out string rerr))
                             { response = rerr; return false; }
                             PlayerData d = GetDataById(uid);
-                            SetLock(d, LockNone, "管理指令");
-                            response = $"{d.Name} 已解锁 ✅ (selfban 期间的数据已一次性入账)";
+                            SetLock(d, LockNone, L.T("管理指令", "Admin command"));
+                            response = L.T($"{d.Name} 已解锁 ✅ (selfban 期间的数据已一次性入账)", $"{d.Name} unlocked ✅ (self-ban period data has been credited at once)");
                             return true;
                         }
                     case "full":
                         {
-                            if (arguments.Count < 2) { response = "用法: EXPAS full <玩家ID>"; return false; }
+                            if (arguments.Count < 2) { response = L.T("用法: EXPAS full <玩家ID>", "Usage: EXPAS full <player ID>"); return false; }
                             if (!ResolvePlayer(arguments.At(1), out string uid, out _, out _, out string rerr))
                             { response = rerr; return false; }
                             PlayerData d = GetDataById(uid);
-                            SetLock(d, LockPunishment, "管理指令");
-                            response = $"{d.Name} 已进入惩罚锁定 🚫 (旧 full 语义 = punishment)";
+                            SetLock(d, LockPunishment, L.T("管理指令", "Admin command"));
+                            response = L.T($"{d.Name} 已进入惩罚锁定 🚫 (旧 full 语义 = punishment)", $"{d.Name} is now punishment-locked 🚫 (legacy full = punishment)");
                             return true;
                         }
 
@@ -1474,7 +1491,7 @@ namespace Expas
                             // EXPAS title <玩家ID> <plan> [文本]
                             // plan: 0/off 不干预  1/ifempty 无称号才设(层1)  2/force 强制替换(层2)  3/clear 彻底清除(层3)
                             if (arguments.Count < 3)
-                            { response = "用法: EXPAS title <玩家ID> <0|1|2|3> [文本]\n0=不干预 1=无称号才设(层1) 2=强制替换(层2) 3=彻底清除(层3)"; return false; }
+                            { response = L.T("用法: EXPAS title <玩家ID> <0|1|2|3> [文本]\n0=不干预 1=无称号才设(层1) 2=强制替换(层2) 3=彻底清除(层3)", "Usage: EXPAS title <player ID> <0|1|2|3> [text]\n0=do nothing 1=set only if empty (layer 1) 2=force replace (layer 2) 3=clear completely (layer 3)"); return false; }
                             if (!ResolvePlayer(arguments.At(1), out string uid, out Player on, out _, out string rerr))
                             { response = rerr; return false; }
                             PlayerData d = GetDataById(uid);
@@ -1494,9 +1511,9 @@ namespace Expas
                             d.TitlePlan = plan;
                             SavePlayer(d);
                             if (on != null) ApplyTitle(on, d);
-                            response = $"{d.Name}({uid}) 称号策略 → {TitlePlanName(plan)}" +
-                                       (plan != TitleClear && d.TitleText.Length > 0 ? $"  文本: {d.TitleText}" : string.Empty) +
-                                       (plan == TitleClear ? $"  (已清空 {d.Name} 的 CustomInfo)" : string.Empty);
+                            response = L.T($"{d.Name}({uid}) 称号策略 → {TitlePlanName(plan)}", $"{d.Name}({uid}) title plan → {TitlePlanName(plan)}") +
+                                       (plan != TitleClear && d.TitleText.Length > 0 ? L.T($"  文本: {d.TitleText}", $"  Text: {d.TitleText}") : string.Empty) +
+                                       (plan == TitleClear ? L.T($"  (已清空 {d.Name} 的 CustomInfo)", $"  (Cleared {d.Name}'s CustomInfo)") : string.Empty);
                             return true;
                         }
 
@@ -1509,16 +1526,16 @@ namespace Expas
                             {
                                 var files = ListAudioFiles();
                                 response = (files.Count == 0
-                                    ? "audio 目录没有音频: " + AudioDir + "\n支持格式: " + string.Join(" ", AudioExtensions)
-                                    : $"可用音频({files.Count}, 支持 {string.Join("/", AudioExtensions.Select(x => x.TrimStart('.')))}): " + string.Join(", ", files))
-                                    + ((NativeCodecAvailable || FfmpegAvailable) ? string.Empty : "   ⚠ 无解码器 → 目前只有 WAV 能播")
-                                    + "   解码器: " + DecoderStatusText();
+                                    ? L.T("audio 目录没有音频: ", "No audio in the audio directory: ") + AudioDir + L.T("\n支持格式: ", "\nSupported formats: ") + string.Join(" ", AudioExtensions)
+                                    : L.T($"可用音频({files.Count}, 支持 {string.Join("/", AudioExtensions.Select(x => x.TrimStart('.')))}): ", $"Available audio ({files.Count}, supports {string.Join("/", AudioExtensions.Select(x => x.TrimStart('.')))}): ") + string.Join(", ", files))
+                                    + ((NativeCodecAvailable || FfmpegAvailable) ? string.Empty : L.T("   ⚠ 无解码器 → 目前只有 WAV 能播", "   ⚠ No decoder → only WAV can play for now"))
+                                    + L.T("   解码器: ", "   Decoder: ") + DecoderStatusText();
                                 return true;
                             }
                             if (a1 == "stop")
                             {
                                 StopAudio();
-                                response = "已停止音频播放";
+                                response = L.T("已停止音频播放", "Audio playback stopped");
                                 return true;
                             }
                             if (a1 == "call")
@@ -1529,7 +1546,7 @@ namespace Expas
                             if (a1 == "play")
                             {
                                 if (arguments.Count < 3)
-                                { response = "用法: EXPAS audio play <文件名>(支持 " + string.Join("/", AudioExtensions.Select(x => x.TrimStart('.'))) + "; 文件放 " + AudioDir + ")"; return false; }
+                                { response = L.T("用法: EXPAS audio play <文件名>(支持 ", "Usage: EXPAS audio play <file name> (supports ") + string.Join("/", AudioExtensions.Select(x => x.TrimStart('.'))) + L.T("; 文件放 ", "; put files in ") + AudioDir + ")"; return false; }
                                 var parts2 = new List<string>();
                                 for (int i = 2; i < arguments.Count; i++) parts2.Add(arguments.At(i));
                                 string file = string.Join(" ", parts2).Trim();
@@ -1544,13 +1561,13 @@ namespace Expas
                                     }
                                 }
                                 bool ok = File.Exists(full) && PlayAudioPath(full);
-                                response = ok ? "▶ 已受理播放: " + Path.GetFileName(full) : "播放失败(文件不存在或不支持): " + file;
+                                response = ok ? L.T("▶ 已受理播放: ", "▶ Playback accepted: ") + Path.GetFileName(full) : L.T("播放失败(文件不存在或不支持): ", "Playback failed (file missing or unsupported): ") + file;
                                 return true;
                             }
-                            response = "用法: EXPAS audio play <文件名> | list | stop | call\n" +
-                                       "支持格式: " + string.Join(" ", AudioExtensions) +
-                                       "\n当前方案: " + (Config.AudioPlaybackPlan == AudioPlanSpeaker ? "隐藏音箱(不生成假人)" : "关闭") +
-                                       "\n解码器: " + DecoderStatusText();
+                            response = L.T("用法: EXPAS audio play <文件名> | list | stop | call\n", "Usage: EXPAS audio play <file name> | list | stop | call\n") +
+                                       L.T("支持格式: ", "Supported formats: ") + string.Join(" ", AudioExtensions) +
+                                       L.T("\n当前方案: ", "\nCurrent plan: ") + (Config.AudioPlaybackPlan == AudioPlanSpeaker ? L.T("隐藏音箱(不生成假人)", "Hidden Speaker (no dummy spawned)") : L.T("关闭", "Off")) +
+                                       L.T("\n解码器: ", "\nDecoder: ") + DecoderStatusText();
                             return false;
                         }
 
@@ -1563,18 +1580,18 @@ namespace Expas
                             {
                                 var idx = LoadMvpMusicIndex();
                                 var sb = new StringBuilder(
-                                    $"第一名音乐盒(开关 {(Config.MvpMusicEnabled ? "开" : "关")})  目录: {MvpMusicDir}");
-                                sb.Append("\n来源: 该目录下的 *.js 文件(每个 JS 声明 owner + audio)");
+                                    L.T($"第一名音乐盒(开关 {(Config.MvpMusicEnabled ? "开" : "关")})  目录: {MvpMusicDir}", $"MVP Music ({(Config.MvpMusicEnabled ? "On" : "Off")})  Directory: {MvpMusicDir}"));
+                                sb.Append(L.T("\n来源: 该目录下的 *.js 文件(每个 JS 声明 owner + audio)", "\nSource: *.js files in this directory (each JS declares owner + audio)"));
                                 if (idx.Count == 0)
                                 {
-                                    sb.Append("\n(目录里没有可用的音乐盒 JS —— 放一个 <Steam64>.js 进去即可)");
+                                    sb.Append(L.T("\n(目录里没有可用的音乐盒 JS —— 放一个 <Steam64>.js 进去即可)", "\n(No usable MVP music JS in the directory — just drop a <Steam64>.js in)"));
                                 }
                                 else
                                 {
                                     foreach (var kv in idx.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
                                     {
                                         var e = kv.Value;
-                                        sb.Append($"\n- {e.Owner} → {e.File}  [{(e.Exists ? "文件存在" : "文件缺失")}]  ← {Path.GetFileName(e.Source)}");
+                                        sb.Append(L.T($"\n- {e.Owner} → {e.File}  [{(e.Exists ? "文件存在" : "文件缺失")}]  ← {Path.GetFileName(e.Source)}", $"\n- {e.Owner} → {e.File}  [{(e.Exists ? "File exists" : "File missing")}]  ← {Path.GetFileName(e.Source)}"));
                                     }
                                 }
                                 // 顺带列出目录里存在、但没有任何 JS 引用的音频
@@ -1585,7 +1602,7 @@ namespace Expas
                                         .Where(f => !used.Contains(Path.GetFullPath(f)))
                                         .Select(Path.GetFileName).ToList();
                                     if (orphan.Count > 0)
-                                        sb.Append("\n未被 JS 引用的音频: " + string.Join(", ", orphan));
+                                        sb.Append(L.T("\n未被 JS 引用的音频: ", "\nAudio not referenced by any JS: ") + string.Join(", ", orphan));
                                 }
                                 catch { }
                                 response = sb.ToString();
@@ -1594,15 +1611,15 @@ namespace Expas
                             if (a1 == "play")
                             {
                                 if (arguments.Count < 3)
-                                { response = "用法: EXPAS mvpmusic play <玩家ID>(按其 Steam64 检索 mvp_music\\*.js 播放)"; return false; }
+                                { response = L.T("用法: EXPAS mvpmusic play <玩家ID>(按其 Steam64 检索 mvp_music\\*.js 播放)", "Usage: EXPAS mvpmusic play <player ID> (looks up mvp_music\\*.js by their Steam64 and plays it)"); return false; }
                                 if (!ResolvePlayer(arguments.At(2), out string uid, out _, out _, out string rerr))
                                 { response = rerr; return false; }
                                 bool ok = PlayMvpMusicFor(uid);
-                                response = ok ? $"▶ 已播放 {CanonUserId(uid)} 的第一名音乐盒" : $"{CanonUserId(uid)} 未命中任何音乐盒 JS 或音频缺失";
+                                response = ok ? L.T($"▶ 已播放 {CanonUserId(uid)} 的第一名音乐盒", $"▶ Playing MVP Music for {CanonUserId(uid)}") : L.T($"{CanonUserId(uid)} 未命中任何音乐盒 JS 或音频缺失", $"No MVP music JS matched {CanonUserId(uid)}, or the audio file is missing");
                                 return true;
                             }
-                            response = "用法: EXPAS mvpmusic list | EXPAS mvpmusic play <玩家ID>\n" +
-                                       "回合结束自动触发: 伤害第一名命中 mvp_music_players 即播放其专属音频。";
+                            response = L.T("用法: EXPAS mvpmusic list | EXPAS mvpmusic play <玩家ID>\n", "Usage: EXPAS mvpmusic list | EXPAS mvpmusic play <player ID>\n") +
+                                       L.T("回合结束自动触发: 伤害第一名命中 mvp_music_players 即播放其专属音频。", "Auto-triggered at round end: the top-damage player listed in mvp_music_players gets their own audio played.");
                             return false;
                         }
 
@@ -1613,85 +1630,85 @@ namespace Expas
                             $"DamageToExp={Config.DamageToExp} | BaseExp={Config.BaseExp} | Growth={Config.ExpGrowth} | MaxLevel={Config.MaxLevel}\n" +
                             $"OfflineDays={Config.OfflineDays} | HudInterval={Config.HudInterval} | PlaytimeMode={Config.PlaytimeMode} | " +
                             $"DaysMode={Config.DaysMode} | ApiEnabled={Config.ApiEnabled} | TopCount={Config.TopCount}\n" +
-                            $"仅算真人={Config.OnlyRealPlayers} 含SCP={Config.CountScp} 含人机={Config.CountDummies} 死亡时结算={Config.SettleOnDeath} | " +
-                            $"CustomLines={Config.CustomLines?.Count ?? 0}行 | MvpAnnounce={(string.IsNullOrEmpty(Config.MvpAnnounce) ? "(空)" : Config.MvpAnnounce)}";
+                            L.T($"仅算真人={Config.OnlyRealPlayers} 含SCP={Config.CountScp} 含人机={Config.CountDummies} 死亡时结算={Config.SettleOnDeath} | ", $"Real players only={Config.OnlyRealPlayers} Include SCP={Config.CountScp} Include dummies={Config.CountDummies} Settle on death={Config.SettleOnDeath} | ") +
+                            L.T($"CustomLines={Config.CustomLines?.Count ?? 0}行 | MvpAnnounce={(string.IsNullOrEmpty(Config.MvpAnnounce) ? "(空)" : Config.MvpAnnounce)}", $"CustomLines={Config.CustomLines?.Count ?? 0} lines | MvpAnnounce={(string.IsNullOrEmpty(Config.MvpAnnounce) ? "(empty)" : Config.MvpAnnounce)}");
                         return true;
 
                     case "setcfg":
                         {
-                            if (rawVal == null || arguments.Count < 3) { response = "用法: exp setcfg <键> <值>"; return false; }
+                            if (rawVal == null || arguments.Count < 3) { response = L.T("用法: exp setcfg <键> <值>", "Usage: exp setcfg <key> <value>"); return false; }
                             string key = arguments.At(1).ToLowerInvariant();
                             return SetConfigValue(key, rawVal, out response);
                         }
                     case "time":
                         {
-                            if (rawVal == null) { response = "用法: exp time <GMT+9|日本|+8|8>"; return false; }
+                            if (rawVal == null) { response = L.T("用法: exp time <GMT+9|日本|+8|8>", "Usage: exp time <GMT+9|Japan|+8|8>"); return false; }
                             Config.TimeZone = rawVal.Trim();
-                            SaveConfig();
-                            response = $"时区已改为 {Config.TimeZone} → 当前显示 {GetTimeZoneLabel()} {GetLocalTimeText()} (已写入配置文件)";
+                            SaveConfig(); LocalizeConfigFile();
+                            response = L.T($"时区已改为 {Config.TimeZone} → 当前显示 {GetTimeZoneLabel()} {GetLocalTimeText()} (已写入配置文件)", $"Time zone changed to {Config.TimeZone} → now showing {GetTimeZoneLabel()} {GetLocalTimeText()} (written to config file)");
                             return true;
                         }
                     case "line":
                         {
-                            if (arguments.Count < 3) { response = "用法: exp line <1-4|level1|level2> <文本>"; return false; }
+                            if (arguments.Count < 3) { response = L.T("用法: exp line <1-4|level1|level2> <文本>", "Usage: exp line <1-4|level1|level2> <text>"); return false; }
                             string which = arguments.At(1).ToLowerInvariant();
                             return SetLineText(which, rawVal, out response);
                         }
                     case "custom":
                         {
-                            if (arguments.Count < 2) { response = "用法: exp custom <add 文本|clear|list>"; return false; }
+                            if (arguments.Count < 2) { response = L.T("用法: exp custom <add 文本|clear|list>", "Usage: exp custom <add text|clear|list>"); return false; }
                             string act = arguments.At(1).ToLowerInvariant();
                             if (Config.CustomLines == null) Config.CustomLines = new List<string>();
                             if (act == "add")
                             {
-                                if (string.IsNullOrEmpty(rawVal)) { response = "用法: exp custom add <文本>"; return false; }
+                                if (string.IsNullOrEmpty(rawVal)) { response = L.T("用法: exp custom add <文本>", "Usage: exp custom add <text>"); return false; }
                                 Config.CustomLines.Add(rawVal);
-                                SaveConfig();
-                                response = $"已添加自定义行({Config.CustomLines.Count} 行), 已写入配置文件";
+                                SaveConfig(); LocalizeConfigFile();
+                                response = L.T($"已添加自定义行({Config.CustomLines.Count} 行), 已写入配置文件", $"Added custom line ({Config.CustomLines.Count} lines), written to config file");
                                 return true;
                             }
                             if (act == "clear")
                             {
                                 Config.CustomLines.Clear();
-                                SaveConfig();
-                                response = "已清空自定义行";
+                                SaveConfig(); LocalizeConfigFile();
+                                response = L.T("已清空自定义行", "Custom lines cleared");
                                 return true;
                             }
                             response = Config.CustomLines.Count == 0
-                                ? "当前没有自定义行"
-                                : "自定义行: " + string.Join(" / ", Config.CustomLines);
+                                ? L.T("当前没有自定义行", "No custom lines currently")
+                                : L.T("自定义行: ", "Custom lines: ") + string.Join(" / ", Config.CustomLines);
                             return true;
                         }
                     case "mvp":
                         {
                             Config.MvpAnnounce = rawVal ?? string.Empty;
-                            SaveConfig();
+                            SaveConfig(); LocalizeConfigFile();
                             response = string.IsNullOrEmpty(Config.MvpAnnounce)
-                                ? "已关闭 MVP 公告"
-                                : $"MVP 公告已设为: {Config.MvpAnnounce}";
+                                ? L.T("已关闭 MVP 公告", "MVP announcement disabled")
+                                : L.T($"MVP 公告已设为: {Config.MvpAnnounce}", $"MVP announcement set to: {Config.MvpAnnounce}");
                             return true;
                         }
                     case "top":
                         {
                             List<RoundEntry> top = BuildRoundTop(Config.TopCount);
-                            if (top.Count == 0) { response = "本回合还没有数据"; return true; }
-                            var sb = new StringBuilder("本回合排行榜: ");
+                            if (top.Count == 0) { response = L.T("本回合还没有数据", "No data for this round yet"); return true; }
+                            var sb = new StringBuilder(L.T("本回合排行榜: ", "Round leaderboard: "));
                             for (int i = 0; i < top.Count; i++)
-                                sb.Append($"\n{i + 1}. {top[i].Name}  伤害{top[i].Damage:F0}  经验{top[i].Exp:F0}  击杀{top[i].Kills}  Lv.{top[i].Level}");
+                                sb.Append(L.T($"\n{i + 1}. {top[i].Name}  伤害{top[i].Damage:F0}  经验{top[i].Exp:F0}  击杀{top[i].Kills}  Lv.{top[i].Level}", $"\n{i + 1}. {top[i].Name}  Damage {top[i].Damage:F0}  EXP {top[i].Exp:F0}  Kills {top[i].Kills}  Lv.{top[i].Level}"));
                             response = sb.ToString();
                             return true;
                         }
                     case "api":
                         {
                             Config.ApiEnabled = rawVal == null || ParseFloat(rawVal) != 0f;
-                            SaveConfig();
-                            response = $"本回合 API 已{(Config.ApiEnabled ? "开放" : "关闭")} (ExpasApi.Enabled={ExpasApi.Enabled})";
+                            SaveConfig(); LocalizeConfigFile();
+                            response = L.T($"本回合 API 已{(Config.ApiEnabled ? "开放" : "关闭")} (ExpasApi.Enabled={ExpasApi.Enabled})", $"API is {(Config.ApiEnabled ? "open" : "closed")} this round (ExpasApi.Enabled={ExpasApi.Enabled})");
                             return true;
                         }
                     case "save":
-                        FlushAll("管理指令");
-                        SaveConfig();
-                        response = "已保存玩家数据与配置文件";
+                        FlushAll(L.T("管理指令", "Admin command"));
+                        SaveConfig(); LocalizeConfigFile();
+                        response = L.T("已保存玩家数据与配置文件", "Player data and config saved");
                         return true;
 
                     // ---------------- v2.0 arsa: 重新识别"除自身以外"的全部插件 ----------------
@@ -1730,7 +1747,7 @@ namespace Expas
             }
             catch (Exception ex)
             {
-                response = "执行失败: " + ex.Message;
+                response = L.T("执行失败: ", "Execution failed: ") + ex.Message;
                 return false;
             }
         }
@@ -1748,7 +1765,7 @@ namespace Expas
         private string WhitelistText()
         {
             List<string> l = Config != null ? Config.CustomUiWhitelist : null;
-            if (l == null || l.Count == 0) return "(空 —— 所有人只看到 default 布局)";
+            if (l == null || l.Count == 0) return L.T("(空 —— 所有人只看到 default 布局)", "(empty — everyone only sees the default layout)");
             return string.Join(", ", l);
         }
 
@@ -1756,16 +1773,16 @@ namespace Expas
         {
             response = string.Empty;
             int n = args.Count;
-            if (n < 2) { response = "用法: EXPAS layout list | reload | info <玩家ID> | <玩家ID> <布局名>"; return false; }
+            if (n < 2) { response = L.T("用法: EXPAS layout list | reload | info <玩家ID> | <玩家ID> <布局名>", "Usage: EXPAS layout list | reload | info <player ID> | <player ID> <layout name>"); return false; }
             string a1 = args.At(1).ToLowerInvariant();
 
             if (a1 == "list")
             {
-                var sb = new StringBuilder($"已载入 {_layouts.Count} 套布局(目录 {LayoutDir}):");
+                var sb = new StringBuilder(L.T($"已载入 {_layouts.Count} 套布局(目录 {LayoutDir}):", $"{_layouts.Count} layouts loaded (directory {LayoutDir}):"));
                 foreach (var kv in _layouts.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
-                    sb.Append($"\n- {kv.Key}  [{kv.Value.DisplayName}]  主块 {kv.Value.Main.Count} 排 / 等级块 {kv.Value.Level.Count} 排" +
-                              (kv.Value.FromFile ? "  (来自文件)" : "  (内置默认)"));
-                sb.Append("\n白名单(CustomUiWhitelist): " + WhitelistText());
+                    sb.Append(L.T($"\n- {kv.Key}  [{kv.Value.DisplayName}]  主块 {kv.Value.Main.Count} 排 / 等级块 {kv.Value.Level.Count} 排", $"\n- {kv.Key}  [{kv.Value.DisplayName}]  main {kv.Value.Main.Count} rows / level {kv.Value.Level.Count} rows") +
+                              (kv.Value.FromFile ? L.T("  (来自文件)", "  (from file)") : L.T("  (内置默认)", "  (built-in default)")));
+                sb.Append(L.T("\n白名单(CustomUiWhitelist): ", "\nWhitelist (CustomUiWhitelist): ") + WhitelistText());
                 response = sb.ToString();
                 return true;
             }
@@ -1773,35 +1790,35 @@ namespace Expas
             {
                 LoadLayouts();
                 RebuildSssMenus(true);
-                response = $"已重新扫描布局: {string.Join(", ", _layouts.Keys)}";
+                response = L.T($"已重新扫描布局: {string.Join(", ", _layouts.Keys)}", $"Layouts rescanned: {string.Join(", ", _layouts.Keys)}");
                 return true;
             }
             if (a1 == "info")
             {
-                if (n < 3) { response = "用法: EXPAS layout info <玩家ID>"; return false; }
+                if (n < 3) { response = L.T("用法: EXPAS layout info <玩家ID>", "Usage: EXPAS layout info <player ID>"); return false; }
                 if (!ResolvePlayer(args.At(2), out string iUid, out Player iOn, out _, out string irerr))
                 { response = irerr; return false; }
                 PlayerData di = GetDataById(iUid);
                 string[] avail = LayoutKeysForPlayer(di);
                 response =
-                    $"{di.Name}({iUid}) {(iOn != null ? "在线" : "离线")}\n" +
-                    $"自定义 UI 选项: {(avail.Length > 1 ? string.Join(" / ", avail) : "(无 —— 面板里整项不显示, 固定用默认布局)")}\n" +
-                    $"存储的布局: {(string.IsNullOrEmpty(di.HudLayout) ? "default" : di.HudLayout)}\n" +
-                    $"实际生效: {GetLayoutKey(di)}";
+                    L.T($"{di.Name}({iUid}) {(iOn != null ? "在线" : "离线")}\n", $"{di.Name}({iUid}) {(iOn != null ? "Online" : "Offline")}\n") +
+                    L.T($"自定义 UI 选项: {(avail.Length > 1 ? string.Join(" / ", avail) : "(无 —— 面板里整项不显示, 固定用默认布局)")}\n", $"Custom UI options: {(avail.Length > 1 ? string.Join(" / ", avail) : "(none — the item is hidden in the panel; the default layout is always used)")}\n") +
+                    L.T($"存储的布局: {(string.IsNullOrEmpty(di.HudLayout) ? "default" : di.HudLayout)}\n", $"Stored layout: {(string.IsNullOrEmpty(di.HudLayout) ? "default" : di.HudLayout)}\n") +
+                    L.T($"实际生效: {GetLayoutKey(di)}", $"Effective: {GetLayoutKey(di)}");
                 return true;
             }
 
             // EXPAS layout <玩家ID> <布局名>
-            if (n < 3) { response = "用法: EXPAS layout <玩家ID> <布局名>(布局名用 EXPAS layout list 查)"; return false; }
+            if (n < 3) { response = L.T("用法: EXPAS layout <玩家ID> <布局名>(布局名用 EXPAS layout list 查)", "Usage: EXPAS layout <player ID> <layout name> (use EXPAS layout list to find layout names)"); return false; }
             if (!ResolvePlayer(args.At(1), out string uid, out Player online, out _, out string lerr))
             { response = lerr; return false; }
             string key = args.At(2).Trim();
             HudLayoutDef def;
             if (!_layouts.TryGetValue(key, out def) || def == null)
-            { response = $"没有这个布局: {key}\n可用: {string.Join(", ", _layouts.Keys)}"; return false; }
+            { response = L.T($"没有这个布局: {key}\n可用: {string.Join(", ", _layouts.Keys)}", $"No such layout: {key}\nAvailable: {string.Join(", ", _layouts.Keys)}"); return false; }
 
             PlayerData d = GetDataById(uid);
-            if (d == null) { response = "无法创建/读取该玩家数据"; return false; }
+            if (d == null) { response = L.T("无法创建/读取该玩家数据", "Cannot create/read this player's data"); return false; }
             d.HudLayout = def.Key;
             SavePlayer(d);
 
@@ -1817,10 +1834,10 @@ namespace Expas
                         online.SendHint(BuildHud(online, d), Mathf.Max(Config.HudClear, Config.HudInterval + 0.3f));
                 }
             }
-            response = $"{d.Name}({uid}) 布局 → {def.Key}  [{def.DisplayName}]" +
+            response = L.T($"{d.Name}({uid}) 布局 → {def.Key}  [{def.DisplayName}]", $"{d.Name}({uid}) layout → {def.Key}  [{def.DisplayName}]") +
                        (usable ? string.Empty
-                            : $"\n注意: 该布局的 owner Steam64 不匹配 {uid}, 也非白名单 —— 自定义布局**不会生效**, " +
-                              $"会按默认布局渲染。请确认布局文件首行(# owner= / // owner= / const owner=)或文件名前缀是他本人的 Steam64。");
+                            : L.T($"\n注意: 该布局的 owner Steam64 不匹配 {uid}, 也非白名单 —— 自定义布局**不会生效**, ", $"\nNote: this layout's owner Steam64 does not match {uid} and the player is not whitelisted — the custom layout will NOT take effect, ") +
+                              L.T($"会按默认布局渲染。请确认布局文件首行(# owner= / // owner= / const owner=)或文件名前缀是他本人的 Steam64。", $"the default layout will be used instead. Make sure the first line (# owner= / // owner= / const owner=) or the file name prefix is the player's own Steam64."));
             return true;
         }
 
@@ -1829,32 +1846,32 @@ namespace Expas
             response = string.Empty;
             int n = args.Count;
             if (Config.CustomUiWhitelist == null) Config.CustomUiWhitelist = new List<string>();
-            if (n < 2) { response = "用法: EXPAS whitelist add|remove|list [Steam64]\n(Steam64 支持 7656119…@steam 或纯数字)"; return false; }
+            if (n < 2) { response = L.T("用法: EXPAS whitelist add|remove|list [Steam64]\n(Steam64 支持 7656119…@steam 或纯数字)", "Usage: EXPAS whitelist add|remove|list [Steam64]\n(Steam64 accepts 7656119…@steam or plain digits)"); return false; }
             string a1 = args.At(1).ToLowerInvariant();
 
             if (a1 == "list")
             {
-                response = $"CustomUiWhitelist({Config.CustomUiWhitelist.Count} 项): {WhitelistText()}";
+                response = L.T($"CustomUiWhitelist({Config.CustomUiWhitelist.Count} 项): {WhitelistText()}", $"CustomUiWhitelist ({Config.CustomUiWhitelist.Count} entries): {WhitelistText()}");
                 return true;
             }
             if (a1 != "add" && a1 != "remove")
-            { response = "用法: EXPAS whitelist add|remove|list [Steam64]"; return false; }
-            if (n < 3) { response = $"用法: EXPAS whitelist {a1} <Steam64>"; return false; }
+            { response = L.T("用法: EXPAS whitelist add|remove|list [Steam64]", "Usage: EXPAS whitelist add|remove|list [Steam64]"); return false; }
+            if (n < 3) { response = L.T($"用法: EXPAS whitelist {a1} <Steam64>", $"Usage: EXPAS whitelist {a1} <Steam64>"); return false; }
 
             string canon = CanonUserId(args.At(2));
-            if (canon == null) { response = "Steam64 不能为空"; return false; }
+            if (canon == null) { response = L.T("Steam64 不能为空", "Steam64 cannot be empty"); return false; }
 
             if (a1 == "add")
             {
                 foreach (string w in Config.CustomUiWhitelist)
                     if (string.Equals(CanonUserId(w), canon, StringComparison.OrdinalIgnoreCase))
-                    { response = $"已在白名单里: {w}"; return true; }
+                    { response = L.T($"已在白名单里: {w}", $"Already whitelisted: {w}"); return true; }
                 Config.CustomUiWhitelist.Add(canon);
-                SaveConfig();                      // 写回 config.yml (UTF-8)
+                SaveConfig(); LocalizeConfigFile();                      // 写回 config.yml (UTF-8)
                 RebuildSssMenus(true);             // 立刻让他看到「自定义 UI」下拉
                 Player on = FindOnline(canon);
-                response = $"已加入白名单: {canon} (已写回 config.yml)" +
-                           (on != null ? $" —— 已给 {on.Nickname} 下发含「自定义 UI」的 SSS 菜单" : string.Empty);
+                response = L.T($"已加入白名单: {canon} (已写回 config.yml)", $"Added to whitelist: {canon} (written back to config.yml)") +
+                           (on != null ? L.T($" —— 已给 {on.Nickname} 下发含「自定义 UI」的 SSS 菜单", $" — sent the SSS menu with \"Custom UI\" to {on.Nickname}") : string.Empty);
                 return true;
             }
 
@@ -1862,9 +1879,9 @@ namespace Expas
             for (int i = Config.CustomUiWhitelist.Count - 1; i >= 0; i--)
                 if (string.Equals(CanonUserId(Config.CustomUiWhitelist[i]), canon, StringComparison.OrdinalIgnoreCase))
                 { Config.CustomUiWhitelist.RemoveAt(i); removed++; }
-            if (removed == 0) { response = $"白名单里没有: {canon}"; return false; }
+            if (removed == 0) { response = L.T($"白名单里没有: {canon}", $"Not in whitelist: {canon}"); return false; }
 
-            SaveConfig();
+            SaveConfig(); LocalizeConfigFile();
             RebuildSssMenus(true);
             Player on2 = FindOnline(canon);
             if (on2 != null)
@@ -1874,7 +1891,7 @@ namespace Expas
                 if (d2 != null && Config.HudSurface != 0 && !IsHudOff(canon))
                     on2.SendHint(BuildHud(on2, d2), Mathf.Max(Config.HudClear, Config.HudInterval + 0.3f));
             }
-            response = $"已从白名单移除: {canon} (已写回 config.yml; 该玩家立即回到默认布局)";
+            response = L.T($"已从白名单移除: {canon} (已写回 config.yml; 该玩家立即回到默认布局)", $"Removed from whitelist: {canon} (written back to config.yml; the player immediately returns to the default layout)");
             return true;
         }
 
@@ -1891,10 +1908,10 @@ namespace Expas
             response = string.Empty;
             if (arguments.Count < 3)
             {
-                response = "用法: EXPAS " + (add ? "add" : "set") + " <玩家ID> <字段> <值>\n" +
-                           "字段: level / points / lock / total_damage / total_kills / played_days / today_play_time(秒) / total_play_time(秒)\n" +
+                response = L.T("用法: EXPAS ", "Usage: EXPAS ") + (add ? "add" : "set") + L.T(" <玩家ID> <字段> <值>\n", " <player ID> <field> <value>\n") +
+                           L.T("字段: level / points / lock / total_damage / total_kills / played_days / today_play_time(秒) / total_play_time(秒)\n", "Fields: level / points / lock / total_damage / total_kills / played_days / today_play_time(seconds) / total_play_time(seconds)\n") +
                            "lock: 0=none 1=punishment 2=selfban 3=inactive\n" +
-                           "示例: EXPAS set 玩家 level 225   |   EXPAS add 玩家 points 300   |   EXPAS set 玩家 lock 1";
+                           L.T("示例: EXPAS set 玩家 level 225   |   EXPAS add 玩家 points 300   |   EXPAS set 玩家 lock 1", "Example: EXPAS set <player> level 225   |   EXPAS add <player> points 300   |   EXPAS set <player> lock 1");
                 return false;
             }
 
@@ -1914,18 +1931,18 @@ namespace Expas
                 for (int i = 3; i < arguments.Count; i++) parts.Add(arguments.At(i));
                 val = string.Join(" ", parts).Trim();
             }
-            if (string.IsNullOrEmpty(val)) { response = "缺少 <值>"; return false; }
+            if (string.IsNullOrEmpty(val)) { response = L.T("缺少 <值>", "Missing <value>"); return false; }
 
             if (!ResolvePlayer(ident, out string userId, out Player online, out _, out string serr))
             { response = serr; return false; }
 
             PlayerData d = GetDataById(userId);
-            if (d == null) { response = "无法创建/读取该玩家数据"; return false; }
+            if (d == null) { response = L.T("无法创建/读取该玩家数据", "Cannot create/read this player's data"); return false; }
 
             if (!ApplyField(d, field, val, add, out response)) return false;
 
             if (online != null) UpdateName(online, d);
-            response = $"{d.Name}({userId}) {field} {(add ? "增加" : "设为")} {val} → 现在 {DescribeField(d, field)}";
+            response = L.T($"{d.Name}({userId}) {field} {(add ? "增加" : "设为")} {val} → 现在 {DescribeField(d, field)}", $"{d.Name}({userId}) {field} {(add ? "added" : "set to")} {val} → now {DescribeField(d, field)}");
             return true;
         }
 
@@ -1988,13 +2005,13 @@ namespace Expas
                 case "lock":
                     {
                         if (!ParseLockMode(val, out int mode))
-                        { response = "lock 取值: 0/none, 1/punishment, 2/selfban, 3/inactive"; return false; }
-                        SetLock(d, mode, "管理指令");    // SetLock 内部落盘并给提示
+                        { response = L.T("lock 取值: 0/none, 1/punishment, 2/selfban, 3/inactive", "lock values: 0/none, 1/punishment, 2/selfban, 3/inactive"); return false; }
+                        SetLock(d, mode, L.T("管理指令", "Admin command"));    // SetLock 内部落盘并给提示
                         return true;
                     }
                 default:
-                    response = $"未知字段: {field}\n可用字段: level / points / lock / total_damage / total_kills / played_days / " +
-                               "today_play_time(秒) / total_play_time(秒)   (另支持 exp)";
+                    response = L.T($"未知字段: {field}\n可用字段: level / points / lock / total_damage / total_kills / played_days / ", $"Unknown field: {field}\nAvailable fields: level / points / lock / total_damage / total_kills / played_days / ") +
+                               L.T("today_play_time(秒) / total_play_time(秒)   (另支持 exp)", "today_play_time(seconds) / total_play_time(seconds)   (exp is also supported)");
                     return false;
             }
             SavePlayer(d);
@@ -2010,8 +2027,8 @@ namespace Expas
                 case "points": return $"{d.Points:F0}";
                 case "total_damage": return $"{d.TotalDamage:F0}";
                 case "total_kills": return $"{d.Kills}";
-                case "played_days": return $"{d.PlayedDays} 天";
-                case "today_play_time": return $"{GetTodayPlaySeconds(d):F0} 秒";
+                case "played_days": return L.T($"{d.PlayedDays} 天", $"{d.PlayedDays} days");
+                case "today_play_time": return L.T($"{GetTodayPlaySeconds(d):F0} 秒", $"{GetTodayPlaySeconds(d):F0} s");
                 case "total_play_time": return PlaytimeText(d.PlaySeconds);
                 case "exp": return $"{d.Exp:F0}";
                 case "lock": return $"{LockName(d.LockState)}{LockIcon(d.LockState)}";
@@ -2045,7 +2062,7 @@ namespace Expas
         private bool ResolvePlayer(string ident, out string userId, out Player online, out string displayName, out string error)
         {
             userId = null; online = null; displayName = null; error = null;
-            if (string.IsNullOrWhiteSpace(ident)) { error = "玩家标识为空"; return false; }
+            if (string.IsNullOrWhiteSpace(ident)) { error = L.T("玩家标识为空", "Player identifier is empty"); return false; }
             ident = ident.Trim();
 
             bool allDigits = true;
@@ -2075,9 +2092,9 @@ namespace Expas
                 if (matches.Count > 1)
                 {
                     // 命中多人 → 必须报错, 否则可能改错人
-                    error = $"名字「{ident}」匹配到 {matches.Count} 个在线玩家: " +
-                            string.Join(", ", matches.Take(8).Select(x => $"{x.Nickname}(序列{x.PlayerId})")) +
-                            " —— 请写完整名字, 或直接用序列ID / Steam64";
+                    error = L.T($"名字「{ident}」匹配到 {matches.Count} 个在线玩家: ", $"Name \"{ident}\" matched {matches.Count} online players: ") +
+                            string.Join(", ", matches.Take(8).Select(x => $"{x.Nickname}({L.T("序列", "seq ")}{x.PlayerId})")) +
+                            L.T(" —— 请写完整名字, 或直接用序列ID / Steam64", " — please write the full name, or use the sequence ID / Steam64 directly");
                     return false;
                 }
             }
@@ -2099,12 +2116,12 @@ namespace Expas
 
             // 都没命中 → 说明当前允许哪些写法
             var allowed = new List<string>();
-            if (Config.LookupBySeqId) allowed.Add("局内序列ID");
-            if (Config.LookupByName) allowed.Add("玩家名");
+            if (Config.LookupBySeqId) allowed.Add(L.T("局内序列ID", "In-game sequence ID"));
+            if (Config.LookupByName) allowed.Add(L.T("玩家名", "Player name"));
             if (Config.LookupBySteam) allowed.Add("Steam64/UserId");
             error = allowed.Count == 0
-                ? $"找不到玩家「{ident}」—— 三类解析方式(序列ID/玩家名/Steam64)在配置文件里都被关闭了"
-                : $"找不到玩家「{ident}」(当前允许的写法: {string.Join(" / ", allowed)})";
+                ? L.T($"找不到玩家「{ident}」—— 三类解析方式(序列ID/玩家名/Steam64)在配置文件里都被关闭了", $"Player \"{ident}\" not found — all three lookup methods (sequence ID/player name/Steam64) are disabled in the config file")
+                : L.T($"找不到玩家「{ident}」(当前允许的写法: {string.Join(" / ", allowed)})", $"Player \"{ident}\" not found (currently allowed formats: {string.Join(" / ", allowed)})");
             return false;
         }
 
@@ -2191,13 +2208,13 @@ namespace Expas
                 case "level1": Config.HudLevel1 = val; break;
                 case "level2": Config.HudLevel2 = val; break;
                 default:
-                    response = $"未知配置键: {key}\n可用: server/time/rate/base/growth/maxlevel/offlinedays/hudinterval/" +
+                    response = L.T($"未知配置键: {key}\n可用: server/time/rate/base/growth/maxlevel/offlinedays/hudinterval/", $"Unknown config key: {key}\nAvailable: server/time/rate/base/growth/maxlevel/offlinedays/hudinterval/") +
                                "playtimemode/daysmode/api/topcount/custompos/onlyreal/countscp/countdummies/" +
                                "settleondeath/texttemplates/mvpannounce/line1..4/level1/level2";
                     return false;
             }
-            SaveConfig();
-            response = $"已设置 {key} = {val} (已写入配置文件)";
+            SaveConfig(); LocalizeConfigFile();
+            response = L.T($"已设置 {key} = {val} (已写入配置文件)", $"Set {key} = {val} (written to config file)");
             return true;
         }
 
@@ -2212,11 +2229,11 @@ namespace Expas
                 case "level1": case "l1": Config.HudLevel1 = text; break;
                 case "level2": case "l2": Config.HudLevel2 = text; break;
                 default:
-                    response = "用法: exp line <1-4|level1|level2> <文本>";
+                    response = L.T("用法: exp line <1-4|level1|level2> <文本>", "Usage: exp line <1-4|level1|level2> <text>");
                     return false;
             }
-            SaveConfig();
-            response = $"已更新 {which} 行文本并写入配置文件";
+            SaveConfig(); LocalizeConfigFile();
+            response = L.T($"已更新 {which} 行文本并写入配置文件", $"Updated line {which} and wrote it to the config file");
             return true;
         }
     }

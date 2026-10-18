@@ -11,6 +11,7 @@
 using LabApi.Features.Wrappers;
 using System;
 using System.Text;
+using L = Expas.ExpasLang;
 using Logger = LabApi.Features.Console.Logger;
 
 namespace Expas
@@ -27,10 +28,10 @@ namespace Expas
         {
             switch (plan)
             {
-                case TitleIfEmpty: return "①无称号才设";
-                case TitleForce: return "②强制替换";
-                case TitleClear: return "③彻底清除";
-                default: return "不干预";
+                case TitleIfEmpty: return L.T("①无称号才设", "1) Set only if empty");
+                case TitleForce: return L.T("②强制替换", "2) Force replace");
+                case TitleClear: return L.T("③彻底清除", "3) Clear completely");
+                default: return L.T("不干预", "Off");
             }
         }
 
@@ -63,7 +64,7 @@ namespace Expas
                         break;
                 }
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 称号应用失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn("[EXPAS] " + L.T($"称号应用失败: {ex.Message}", $"Failed to apply Title: {ex.Message}")); }
         }
 
         /// <summary>写称号(带 ValidateCustomInfo 预校验; 失败剥 < > [ ] 后重试一次)。</summary>
@@ -86,9 +87,9 @@ namespace Expas
                 string clean = sb.ToString().Trim();
                 if (clean.Length > 0 && Player.ValidateCustomInfo(clean, out _))
                 { p.CustomInfo = clean; return; }
-                Logger.Warn($"[EXPAS] 称号被拒({reason}): '{t}'");
+                Logger.Warn("[EXPAS] " + L.T($"称号被拒({reason}): '{t}'", $"Title rejected ({reason}): '{t}'"));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 称号写入失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn("[EXPAS] " + L.T($"称号写入失败: {ex.Message}", $"Failed to write Title: {ex.Message}")); }
         }
     }
 }

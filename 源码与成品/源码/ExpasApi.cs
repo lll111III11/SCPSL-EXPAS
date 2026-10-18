@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using L = Expas.ExpasLang;
 using UnityEngine;
 using Logger = LabApi.Features.Console.Logger;
 
@@ -243,7 +244,7 @@ namespace Expas
                 // v2.0 NP 第一名音乐盒: 回合结束 → 检测伤害第一(mvp)的 Steam ID 是否命中配置表 → 播其专属音频
                 //   (位置: 公告之后、FireMvp 之前; 播放走隐藏音箱: 不生成假人)
                 try { PlayMvpMusicFor(mvp.UserId); }
-                catch (Exception ex) { Logger.Warn($"[EXPAS] 第一名音乐盒触发失败: {ex.Message}"); }
+                catch (Exception ex) { Logger.Warn("[EXPAS] " + L.T($"第一名音乐盒触发失败: {ex.Message}", $"MVP Music trigger failed: {ex.Message}")); }
 
                 ExpasApi.FireMvp(mvp);
 
@@ -270,12 +271,13 @@ namespace Expas
                         .Replace("{topList}", BuildTopListText(top));
                     // 必须写全名: 游戏本体里也有个 Cassie 命名空间(Assembly-CSharp G_176315), 短名会被解析成命名空间
                     LabApi.Features.Wrappers.Announcer.Message(cassie, Config.MvpCassieSubtitle ?? string.Empty);
-                    Logger.Info($"[EXPAS] Announcer 结算播报: {cassie}");
+                    Logger.Info("[EXPAS] " + L.T($"Announcer 结算播报: {cassie}", $"Announcer settlement broadcast: {cassie}"));
                 }
 
-                Logger.Info($"[EXPAS] 本回合 MVP: {mvp.Name} 伤害{mvp.Damage:F0} 经验{mvp.Exp:F0}");
+                Logger.Info("[EXPAS] " + L.T($"本回合 MVP: {mvp.Name} 伤害{mvp.Damage:F0} 经验{mvp.Exp:F0}",
+                                              $"Round MVP: {mvp.Name} Damage {mvp.Damage:F0} EXP {mvp.Exp:F0}"));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] MVP 结算失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn("[EXPAS] " + L.T($"MVP 结算失败: {ex.Message}", $"MVP settlement failed: {ex.Message}")); }
         }
 
         private string BuildTopListText(List<RoundEntry> top)
@@ -419,7 +421,7 @@ namespace Expas
         /// <summary>游玩时间文案: PlaytimeMode 1=只按小时(两位小数), 0=自动天/小时/分/秒。</summary>
         private string PlaytimeText(double seconds)
         {
-            if (Config.PlaytimeMode == 1) return $"{(seconds / 3600.0):F2} 小时";
+            if (Config.PlaytimeMode == 1) return L.T($"{(seconds / 3600.0):F2} 小时", $"{(seconds / 3600.0):F2} hours");
             return FormatDuration(seconds);
         }
 

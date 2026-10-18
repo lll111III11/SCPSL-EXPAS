@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using L = Expas.ExpasLang;
 using Logger = LabApi.Features.Console.Logger;
 
 namespace Expas
@@ -160,8 +161,11 @@ namespace Expas
 
                 if (news.Length > 0)
                 {
-                    Logger.Info($"[EXPAS] 检测到旧数据库目录({olds.Length} 个 .dat), 但新目录已有 {news.Length} 条记录 → " +
-                                $"跳过迁移(两组文件都保留): {legacyPlayers}");
+                    Logger.Info(L.T(
+                        $"[EXPAS] 检测到旧数据库目录({olds.Length} 个 .dat), 但新目录已有 {news.Length} 条记录 → " +
+                        $"跳过迁移(两组文件都保留): {legacyPlayers}",
+                        $"[EXPAS] Legacy database directory detected ({olds.Length} .dat files), but the new directory already has {news.Length} records → " +
+                        $"skipping migration (both sets of files kept): {legacyPlayers}"));
                     return;
                 }
 
@@ -173,10 +177,13 @@ namespace Expas
                     File.Copy(f, dst, false);
                     copied++;
                 }
-                Logger.Info($"[EXPAS] 旧数据库已迁移(复制) {copied}/{olds.Length} 个玩家文件: {legacyPlayers} → {newPlayers} " +
-                            $"(旧文件保留, 未删除)");
+                Logger.Info(L.T(
+                    $"[EXPAS] 旧数据库已迁移(复制) {copied}/{olds.Length} 个玩家文件: {legacyPlayers} → {newPlayers} " +
+                    $"(旧文件保留, 未删除)",
+                    $"[EXPAS] Legacy database migrated (copied) {copied}/{olds.Length} player files: {legacyPlayers} → {newPlayers} " +
+                    $"(old files kept, not deleted)"));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 旧数据库迁移失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 旧数据库迁移失败: {ex.Message}", $"[EXPAS] Legacy database migration failed: {ex.Message}")); }
         }
 
         // ========================================================================
@@ -370,7 +377,7 @@ namespace Expas
             }
             catch (Exception ex)
             {
-                Logger.Warn($"[EXPAS] 读取 {userId} 数据失败: {ex.Message}");
+                Logger.Warn(L.T($"[EXPAS] 读取 {userId} 数据失败: {ex.Message}", $"[EXPAS] Failed to read data for {userId}: {ex.Message}"));
                 return null;
             }
         }
@@ -426,7 +433,7 @@ namespace Expas
                 sb.AppendLine("lastSeen=" + d.LastSeen.ToUniversalTime().ToString("o", Inv));
                 File.WriteAllText(FileOf(d.UserId), sb.ToString(), Encoding.UTF8);
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 保存 {d.UserId} 失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 保存 {d.UserId} 失败: {ex.Message}", $"[EXPAS] Failed to save {d.UserId}: {ex.Message}")); }
         }
 
         /// <summary>把在线玩家的游玩时长结算进内存数据后落盘; 只写在线玩家, 不动离线记录的 LastSeen(否则 🕒 判定会失效)。</summary>
@@ -458,7 +465,7 @@ namespace Expas
                 }
                 WriteIndex();
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 保存失败({reason}): {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 保存失败({reason}): {ex.Message}", $"[EXPAS] Save failed ({reason}): {ex.Message}")); }
         }
 
         private void WriteIndex()
@@ -466,7 +473,7 @@ namespace Expas
             try
             {
                 var sb = new StringBuilder();
-                sb.AppendLine("# EXPAS 玩家索引 (Steam64 | 名字 | 等级 | 总伤害 | 累计经验 | 状态 | 最后在线UTC)");
+                sb.AppendLine(L.T("# EXPAS 玩家索引 (Steam64 | 名字 | 等级 | 总伤害 | 累计经验 | 状态 | 最后在线UTC)", "# EXPAS Player Index (Steam64 | Name | Level | Total Damage | Total EXP | Status | Last Seen UTC)"));
                 // v1.4: 缓存已统一以真 UserId 为键; 这里再兜底按 UserId 去重, 保证一个玩家只写一行(修重复行)
                 foreach (PlayerData d in _cache.Values
                              .GroupBy(x => x.UserId, StringComparer.Ordinal)
@@ -481,7 +488,7 @@ namespace Expas
                 }
                 File.WriteAllText(Path.Combine(RootDir, "index.txt"), sb.ToString(), Encoding.UTF8);
             }
-            catch (Exception ex) { Logger.Info($"[EXPAS] 写索引失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Info(L.T($"[EXPAS] 写索引失败: {ex.Message}", $"[EXPAS] Failed to write index: {ex.Message}")); }
         }
 
         // ========================================================================
@@ -527,7 +534,7 @@ namespace Expas
             d.FirstSeen = DateTime.UtcNow;
             d.LastSeen = DateTime.UtcNow;
             SavePlayer(d);
-            Logger.Info($"[EXPAS] 已重置 {d.Name}({d.UserId})");
+            Logger.Info(L.T($"[EXPAS] 已重置 {d.Name}({d.UserId})", $"[EXPAS] Reset {d.Name}({d.UserId})"));
         }
 
         // ========================================================================
@@ -540,7 +547,7 @@ namespace Expas
             if (d.LockState == LockInactive)
             {
                 d.LockState = LockNone;
-                Logger.Info($"[EXPAS] {d.Name}({d.UserId}) 已重新上线, inactive(🕒) 自动清回 none");
+                Logger.Info(L.T($"[EXPAS] {d.Name}({d.UserId}) 已重新上线, inactive(🕒) 自动清回 none", $"[EXPAS] {d.Name}({d.UserId}) is back online, inactive (🕒) automatically cleared to none"));
             }
             d.LongOffline = false;   // 人回来了就摘掉
         }
@@ -572,9 +579,9 @@ namespace Expas
                         marked++;
                     }
                 }
-                if (marked > 0) Logger.Info($"[EXPAS] 长期未上线({days}天)自动标记 🕒: {marked} 人");
+                if (marked > 0) Logger.Info(L.T($"[EXPAS] 长期未上线({days}天)自动标记 🕒: {marked} 人", $"[EXPAS] Long-offline ({days} days) auto-marked 🕒: {marked} players"));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 离线扫描失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 离线扫描失败: {ex.Message}", $"[EXPAS] Offline scan failed: {ex.Message}")); }
         }
 
         /// <summary>
@@ -601,10 +608,13 @@ namespace Expas
                     n++;
                 }
                 WriteIndex();   // 立刻按真 UserId 重写一次索引 —— 老库里同一人两行的问题启动就修掉
-                Logger.Info($"[EXPAS] 数据库: {PlayerDir} (已有 {n} 条玩家记录" +
-                            (merged > 0 ? $", 合并了 {merged} 个同 UserId 的重复文件名" : string.Empty) + ")");
+                Logger.Info(L.T(
+                    $"[EXPAS] 数据库: {PlayerDir} (已有 {n} 条玩家记录" +
+                    (merged > 0 ? $", 合并了 {merged} 个同 UserId 的重复文件名" : string.Empty) + ")",
+                    $"[EXPAS] Database: {PlayerDir} ({n} player records" +
+                    (merged > 0 ? $", merged {merged} duplicate filenames with the same UserId" : string.Empty) + ")"));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 初始化数据库失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 初始化数据库失败: {ex.Message}", $"[EXPAS] Failed to initialize database: {ex.Message}")); }
         }
 
         // ========================================================================
@@ -674,10 +684,12 @@ namespace Expas
             if (seconds < 0d) seconds = 0d;
             var ts = TimeSpan.FromSeconds(seconds);
             if (ts.TotalDays >= 1d)
-                return $"{(int)ts.TotalDays}天{ts.Hours}小时{ts.Minutes}分";
+                return L.T($"{(int)ts.TotalDays}天{ts.Hours}小时{ts.Minutes}分",
+                           $"{(int)ts.TotalDays}d {ts.Hours}h {ts.Minutes}m");
             if (ts.TotalHours >= 1d)
-                return $"{ts.Hours}小时{ts.Minutes}分{ts.Seconds}秒";
-            return $"{ts.Minutes}分{ts.Seconds}秒";
+                return L.T($"{ts.Hours}小时{ts.Minutes}分{ts.Seconds}秒",
+                           $"{ts.Hours}h {ts.Minutes}m {ts.Seconds}s");
+            return L.T($"{ts.Minutes}分{ts.Seconds}秒", $"{ts.Minutes}m {ts.Seconds}s");
         }
 
         // ========================================================================

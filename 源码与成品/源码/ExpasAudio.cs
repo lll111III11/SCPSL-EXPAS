@@ -18,6 +18,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using L = Expas.ExpasLang;
 using Logger = LabApi.Features.Console.Logger;
 
 namespace Expas
@@ -132,13 +133,13 @@ namespace Expas
                     if (s == null) return null;
                     Directory.CreateDirectory(BinDir);
                     using (FileStream f = File.Create(inBin)) s.CopyTo(f);
-                    Logger.Info($"[EXPAS] 已释放内嵌 ffmpeg → {inBin} ({new FileInfo(inBin).Length / 1024 / 1024} MB)");
+                    Logger.Info(L.T($"[EXPAS] 已释放内嵌 ffmpeg → {inBin} ({new FileInfo(inBin).Length / 1024 / 1024} MB)", $"[EXPAS] Extracted embedded ffmpeg → {inBin} ({new FileInfo(inBin).Length / 1024 / 1024} MB)"));
                     return _ffmpegPath = inBin;
                 }
             }
             catch (Exception ex)
             {
-                Logger.Warn($"[EXPAS] 释放/定位 ffmpeg 失败: {ex.Message}");
+                Logger.Warn(L.T($"[EXPAS] 释放/定位 ffmpeg 失败: {ex.Message}", $"[EXPAS] Failed to extract/locate ffmpeg: {ex.Message}"));
                 return null;
             }
         }
@@ -157,7 +158,7 @@ namespace Expas
             {
                 float[] s; string err;
                 if (TryNativeDecode(path, out s, out err)) return s;
-                Logger.Info($"[EXPAS] 原生解码未成功({err}), 尝试 ffmpeg.exe 后备: {Path.GetFileName(path)}");
+                Logger.Info(L.T($"[EXPAS] 原生解码未成功({err}), 尝试 ffmpeg.exe 后备: {Path.GetFileName(path)}", $"[EXPAS] Native decoding failed ({err}), trying ffmpeg.exe fallback: {Path.GetFileName(path)}"));
             }
             return DecodeWithFfmpeg(path);
         }
@@ -165,9 +166,10 @@ namespace Expas
         /// <summary>整体解码能力描述(命令/日志用)。</summary>
         public string DecoderStatusText()
         {
-            if (NativeCodecAvailable) return "原生 DLL 解码器(自建, " + (NativeCodecVersion ?? "?") + ")";
-            if (FfmpegAvailable) return "ffmpeg.exe(后备)";
-            return "仅 WAV(无 ffmpeg)";
+            if (NativeCodecAvailable) return L.T("原生 DLL 解码器(自建, " + (NativeCodecVersion ?? "?") + ")",
+                                                 "Native DLL Decoder (built-in, " + (NativeCodecVersion ?? "?") + ")");
+            if (FfmpegAvailable) return L.T("ffmpeg.exe(后备)", "ffmpeg.exe (fallback)");
+            return L.T("仅 WAV(无 ffmpeg)", "WAV only (no ffmpeg)");
         }
 
         /// <summary>调 ffmpeg 把任意格式解成 f32 单声道 48kHz(写临时文件再读, 避免管道死锁)。失败返回 null。</summary>
@@ -196,12 +198,12 @@ namespace Expas
                     if (!p.WaitForExit(Math.Max(5, Config.AudioDecodeTimeoutSec) * 1000))
                     {
                         try { p.Kill(); } catch { }
-                        Logger.Warn($"[EXPAS] ffmpeg 解码超时: {Path.GetFileName(path)}");
+                        Logger.Warn(L.T($"[EXPAS] ffmpeg 解码超时: {Path.GetFileName(path)}", $"[EXPAS] ffmpeg decoding timed out: {Path.GetFileName(path)}"));
                         return null;
                     }
                     if (p.ExitCode != 0)
                     {
-                        Logger.Warn($"[EXPAS] ffmpeg 解码失败({p.ExitCode}): {Path.GetFileName(path)} {err.Trim()}");
+                        Logger.Warn(L.T($"[EXPAS] ffmpeg 解码失败({p.ExitCode}): {Path.GetFileName(path)} {err.Trim()}", $"[EXPAS] ffmpeg decoding failed ({p.ExitCode}): {Path.GetFileName(path)} {err.Trim()}"));
                         return null;
                     }
                 }
@@ -214,7 +216,7 @@ namespace Expas
             }
             catch (Exception ex)
             {
-                Logger.Warn($"[EXPAS] ffmpeg 调用异常: {ex.Message}");
+                Logger.Warn(L.T($"[EXPAS] ffmpeg 调用异常: {ex.Message}", $"[EXPAS] ffmpeg call exception: {ex.Message}"));
                 return null;
             }
             finally { try { File.Delete(tmp); } catch { } }
@@ -240,14 +242,14 @@ namespace Expas
                 if (Config.AudioPlaybackPlan == AudioPlanOff) return false;
                 if (!File.Exists(path))
                 {
-                    Logger.Warn($"[EXPAS] 音频不存在: {path}");
+                    Logger.Warn(L.T($"[EXPAS] 音频不存在: {path}", $"[EXPAS] Audio not found: {path}"));
                     return false;
                 }
 
                 string ext = Path.GetExtension(path).ToLowerInvariant();
                 if (Array.IndexOf(AudioExtensions, ext) < 0)
                 {
-                    Logger.Warn($"[EXPAS] 不支持的音频格式: {ext}(支持: {string.Join(" ", AudioExtensions)})");
+                    Logger.Warn(L.T($"[EXPAS] 不支持的音频格式: {ext}(支持: {string.Join(" ", AudioExtensions)})", $"[EXPAS] Unsupported audio format: {ext} (supported: {string.Join(" ", AudioExtensions)})"));
                     return false;
                 }
 
@@ -260,13 +262,13 @@ namespace Expas
                         StopAudio();
                         return PlayViaSpeakerAt(Path.GetFileName(path), wav, new Vector3(0, 990, 0));
                     }
-                    Logger.Info($"[EXPAS] WAV 内置解码不适用(非 PCM16), 转用 ffmpeg: {Path.GetFileName(path)}");
+                    Logger.Info(L.T($"[EXPAS] WAV 内置解码不适用(非 PCM16), 转用 ffmpeg: {Path.GetFileName(path)}", $"[EXPAS] Built-in WAV decoding not applicable (not PCM16), using ffmpeg: {Path.GetFileName(path)}"));
                 }
 
                 // 其它格式: 后台解码, 避免卡主线程
                 if (Interlocked.CompareExchange(ref _decoding, 1, 0) != 0)
                 {
-                    Logger.Warn($"[EXPAS] 已有解码任务进行中, 忽略本次: {Path.GetFileName(path)}");
+                    Logger.Warn(L.T($"[EXPAS] 已有解码任务进行中, 忽略本次: {Path.GetFileName(path)}", $"[EXPAS] A decoding task is already running, ignoring this request: {Path.GetFileName(path)}"));
                     return false;
                 }
                 string fileName = Path.GetFileName(path);
@@ -277,20 +279,20 @@ namespace Expas
                         float[] s = DecodeAnyFormat(path);
                         if (s == null || s.Length == 0)
                         {
-                            Logger.Warn($"[EXPAS] 解码失败: {fileName}");
+                            Logger.Warn(L.T($"[EXPAS] 解码失败: {fileName}", $"[EXPAS] Decoding failed: {fileName}"));
                             return;
                         }
                         lock (_pendingLock) _pendingPlays.Enqueue(new KeyValuePair<string, float[]>(fileName, s));
                     }
-                    catch (Exception ex) { Logger.Warn($"[EXPAS] 后台解码异常: {ex.Message}"); }
+                    catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 后台解码异常: {ex.Message}", $"[EXPAS] Background decoding exception: {ex.Message}")); }
                     finally { Interlocked.Exchange(ref _decoding, 0); }
                 });
-                Logger.Info($"[EXPAS] 已提交后台解码: {fileName}");
+                Logger.Info(L.T($"[EXPAS] 已提交后台解码: {fileName}", $"[EXPAS] Background decoding queued: {fileName}"));
                 return true;
             }
             catch (Exception ex)
             {
-                Logger.Warn($"[EXPAS] 播放失败: {ex.Message}");
+                Logger.Warn(L.T($"[EXPAS] 播放失败: {ex.Message}", $"[EXPAS] Playback failed: {ex.Message}"));
                 return false;
             }
         }
@@ -311,7 +313,7 @@ namespace Expas
                 StopAudio();
                 PlayViaSpeakerAt(item.Key, item.Value, new Vector3(0, 990, 0));
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 播出待播音频失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 播出待播音频失败: {ex.Message}", $"[EXPAS] Failed to play pending audio: {ex.Message}")); }
         }
 
         /// <summary>
@@ -380,7 +382,7 @@ namespace Expas
 
                         if (owner == null || string.IsNullOrEmpty(audio))
                         {
-                            Logger.Warn($"[EXPAS] 音乐盒 JS 不可用(缺 owner 或 缺 audio=): {f}");
+                            Logger.Warn(L.T($"[EXPAS] 音乐盒 JS 不可用(缺 owner 或 缺 audio=): {f}", $"[EXPAS] MVP Music JS unusable (missing owner or audio=): {f}"));
                             continue;
                         }
 
@@ -392,13 +394,16 @@ namespace Expas
                         };
                         e.Path = ResolveAudioPath(audio);
                         _mvpMusicIndex[e.Owner] = e;      // 同一 Steam64 后写的覆盖
-                        Logger.Info($"[EXPAS] 音乐盒条目: {e.Owner} → {audio}" +
-                                    (e.Exists ? string.Empty : "  [音频缺失]") + $" ← {Path.GetFileName(f)}");
+                        Logger.Info(L.T(
+                            $"[EXPAS] 音乐盒条目: {e.Owner} → {audio}" +
+                            (e.Exists ? string.Empty : "  [音频缺失]") + $" ← {Path.GetFileName(f)}",
+                            $"[EXPAS] MVP Music entry: {e.Owner} → {audio}" +
+                            (e.Exists ? string.Empty : "  [Audio missing]") + $" ← {Path.GetFileName(f)}"));
                     }
-                    catch (Exception ex) { Logger.Warn($"[EXPAS] 解析音乐盒 JS 失败 {f}: {ex.Message}"); }
+                    catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 解析音乐盒 JS 失败 {f}: {ex.Message}", $"[EXPAS] Failed to parse MVP Music JS {f}: {ex.Message}")); }
                 }
             }
-            catch (Exception ex) { Logger.Warn($"[EXPAS] 扫描音乐盒目录失败: {ex.Message}"); }
+            catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 扫描音乐盒目录失败: {ex.Message}", $"[EXPAS] Failed to scan MVP Music directory: {ex.Message}")); }
             return _mvpMusicIndex;
         }
 
@@ -444,10 +449,10 @@ namespace Expas
             {
                 if (!e.Exists)
                 {
-                    Logger.Warn($"[EXPAS] 第一名音乐盒音频缺失: {e.File} (来自 {Path.GetFileName(e.Source)}; 期望 {e.Path})");
+                    Logger.Warn(L.T($"[EXPAS] 第一名音乐盒音频缺失: {e.File} (来自 {Path.GetFileName(e.Source)}; 期望 {e.Path})", $"[EXPAS] MVP Music audio missing: {e.File} (from {Path.GetFileName(e.Source)}; expected {e.Path})"));
                     return false;
                 }
-                Logger.Info($"[EXPAS] 第一名音乐盒触发: {canon} → {Path.GetFileName(e.Path)} (来自 {Path.GetFileName(e.Source)})");
+                Logger.Info(L.T($"[EXPAS] 第一名音乐盒触发: {canon} → {Path.GetFileName(e.Path)} (来自 {Path.GetFileName(e.Source)})", $"[EXPAS] MVP Music triggered: {canon} → {Path.GetFileName(e.Path)} (from {Path.GetFileName(e.Source)})"));
                 return PlayAudioPath(e.Path);
             }
 
@@ -464,8 +469,8 @@ namespace Expas
                     if (!string.Equals(CanonUserId(idPart), canon, StringComparison.OrdinalIgnoreCase)) continue;
 
                     string p = ResolveAudioPath(filePart);
-                    if (!File.Exists(p)) { Logger.Warn($"[EXPAS] 第一名音乐盒音频缺失(config): {filePart}"); return false; }
-                    Logger.Info($"[EXPAS] 第一名音乐盒触发(config): {canon} → {Path.GetFileName(p)}");
+                    if (!File.Exists(p)) { Logger.Warn(L.T($"[EXPAS] 第一名音乐盒音频缺失(config): {filePart}", $"[EXPAS] MVP Music audio missing (config): {filePart}")); return false; }
+                    Logger.Info(L.T($"[EXPAS] 第一名音乐盒触发(config): {canon} → {Path.GetFileName(p)}", $"[EXPAS] MVP Music triggered (config): {canon} → {Path.GetFileName(p)}"));
                     return PlayAudioPath(p);
                 }
             }
@@ -484,7 +489,7 @@ namespace Expas
             sp.Play(samples, queue: false, loop: Config.AudioLoop);
             _audioSpeaker = sp;
             _audioCurrent = file;
-            Logger.Info($"[EXPAS] ▶ 音频 {file} ({(double)samples.Length / 48000.0:F1}s) 隐藏音箱播放");
+            Logger.Info(L.T($"[EXPAS] ▶ 音频 {file} ({(double)samples.Length / 48000.0:F1}s) 隐藏音箱播放", $"[EXPAS] ▶ Audio {file} ({(double)samples.Length / 48000.0:F1}s) played via Hidden Speaker"));
             return true;
         }
 
@@ -572,7 +577,7 @@ namespace Expas
         /// <summary>音频调用声明汇总(配置 audio_calls 里写清效果与 API 说明)。</summary>
         public string AudioCallsSummary()
         {
-            if (Config.AudioCalls == null || Config.AudioCalls.Count == 0) return "(未配置 audio_calls)";
+            if (Config.AudioCalls == null || Config.AudioCalls.Count == 0) return L.T("(未配置 audio_calls)", "(audio_calls not configured)");
             return string.Join("\n", Config.AudioCalls);
         }
     }
