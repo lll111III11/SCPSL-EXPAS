@@ -81,7 +81,7 @@ namespace Expas
                 sb.Append("常用: set|add  info  lock|unlock  title  audio  mvpmusic\n");
                 sb.Append("其它: layout  whitelist  arsa  config  time  line  custom  mvp  top  api  save  help\n");
                 sb.Append("字段(set|add): ").Append(string.Join(" ", HelpFields));
-                sb.Append('\n').Append("示例: EXPAS set 3 level 225   |   EXPAS add 示例 points 300   |   EXPAS lock 76561198… 1   |   EXPAS arsa");
+                sb.Append('\n').Append("示例: EXPAS set 3 level 225   |   EXPAS add 示例玩家 points 300   |   EXPAS lock 76561198… 1   |   EXPAS arsa");
                 return sb.ToString();
             }
 

@@ -136,8 +136,8 @@ EXPAS 经验扩展插件系统 —— 指令使用方法
         2 / force           层 2：**强制替换**成指定文本
         3 / clear           层 3：**彻底清除**（清空该玩家的 CustomInfo，本指令忽略 [文本]）
      例:
-        EXPAS title Steve 1 示例
-        EXPAS title Steve 2 <color=#FFCC00>示例</color>
+        EXPAS title Steve 1 示例玩家
+        EXPAS title Steve 2 <color=#FFCC00>示例玩家</color>
         EXPAS title Steve 3
 
 2.11 EXPAS audio play <文件名>
@@ -274,21 +274,21 @@ EXPAS 经验扩展插件系统 —— 指令使用方法
   EXPAS                                   简略总览
   EXPAS se                                匹配 set / setcfg / save
   EXPAS info 3                            查序列 ID 3 的玩家
-  EXPAS set 示例 level 225
-  EXPAS add 示例 points 300
+  EXPAS set 示例玩家 level 225
+  EXPAS add 示例玩家 points 300
   EXPAS addlevel Steve 10
   EXPAS restartlevel Steve
   EXPAS lock 76561198000000000 1
-  EXPAS unlock 示例
-  EXPAS title 示例 2 <color=#FFCC00>示例</color>
+  EXPAS unlock 示例玩家
+  EXPAS title 示例玩家 2 <color=#FFCC00>示例玩家</color>
   EXPAS audio list
   EXPAS audio play 示例开场曲.wav
   EXPAS audio call
   EXPAS mvpmusic list
-  EXPAS mvpmusic play 示例
+  EXPAS mvpmusic play 示例玩家
   EXPAS layout list
   EXPAS layout reload
-  EXPAS layout info 示例
+  EXPAS layout info 示例玩家
   EXPAS layout 76561198000000000 example
   EXPAS whitelist add 76561198000000000
   EXPAS setcfg rate 2

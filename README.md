@@ -114,9 +114,9 @@ EXPAS 是一套面向 SCP:SL LabAPI 服务端的综合插件，把**经验等级
 EXPAS                                 简略总览 / 帮助
 EXPAS se                              按关键字匹配子命令
 EXPAS info 3                          查玩家数据（序列ID / 玩家名 / Steam64 三种写法）
-EXPAS set 示例 level 225              改数值字段
-EXPAS add 示例 points 300
-EXPAS title 示例 2 <color=#FFCC00>示例</color>    称号三层
+EXPAS set 示例玩家 level 225              改数值字段
+EXPAS add 示例玩家 points 300
+EXPAS title 示例玩家 2 <color=#FFCC00>示例玩家</color>    称号三层
 EXPAS audio play 示例开场曲.wav         播放音频
 EXPAS mvpmusic list                   第一名音乐盒条目与文件检查
 EXPAS layout reload                   改完布局文件后重扫

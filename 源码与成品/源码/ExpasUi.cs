@@ -190,7 +190,7 @@ namespace Expas
 
         /// <summary>
         /// 为该玩家生成「自定义 UI」下拉的选项(显示名)与 index→layout key 映射(守卫顺序一致)。
-        /// 下拉显示布局的 DisplayName(如 "测试布局(示例)")而不是裸 key(一串数字);
+        /// 下拉显示布局的 DisplayName(如 "测试布局(示例玩家)")而不是裸 key(一串数字);
         /// 顺序与 LayoutKeysForPlayer 完全一致: default 排第一, 其后按 key 排序。
         /// 无可用布局 → 返回 false(调用方不显示下拉)。
         /// </summary>
