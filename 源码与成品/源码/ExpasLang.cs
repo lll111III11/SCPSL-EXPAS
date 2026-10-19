@@ -1,8 +1,8 @@
 // ============================================================================
-//  EXPAS —— 语言与地区自动检测
-//    · 中国区(TZ / 公网 IP) → 中文；其它地区 → English
-//    · config.yml 的 language: auto|zh|en 可手动覆盖
-//    · 所有对外文案走 T("中文", "English")，配置注释在保存后按语言回写
+//  EXPAS —— 语言与地区自动检测 / EXPAS — language and region auto-detection
+//    · 中国区(TZ / 公网 IP) → 中文；其它地区 → English / · China region (TZ / public IP) → Chinese; other regions → English
+//    · config.yml 的 language: auto|zh|en 可手动覆盖 / · language: auto|zh|en in config.yml can override manually
+//    · 所有对外文案走 T("中文", "English")，配置注释在保存后按语言回写 / · All user-facing text goes through T("Chinese", "English"); config comments are rewritten in the current language after saving
 // ============================================================================
 using System;
 using System.Collections.Generic;
@@ -16,22 +16,22 @@ namespace Expas
 {
     internal static class ExpasLang
     {
-        /// <summary>当前是否为中文(默认 true，检测失败时保持中文，与中国区默认一致)。</summary>
+        /// <summary>当前是否为中文(默认 true，检测失败时保持中文，与中国区默认一致)。 / Whether the current language is Chinese (default true; stays Chinese if detection fails, consistent with the China-region default).</summary>
         public static bool Chinese { get; private set; } = true;
 
-        /// <summary>当前语言代码: zh / en。</summary>
+        /// <summary>当前语言代码: zh / en。 / Current language code: zh / en.</summary>
         public static string Code { get { return Chinese ? "zh" : "en"; } }
 
-        /// <summary>语言检测结果说明(写进日志)。</summary>
+        /// <summary>语言检测结果说明(写进日志)。 / Language detection result description (written to the log).</summary>
         public static string DetectedBy { get; private set; } = "default";
 
-        /// <summary>取词: 中文环境返回 zh，其它返回 en。</summary>
+        /// <summary>取词: 中文环境返回 zh，其它返回 en。 / Pick text: returns zh in a Chinese environment, otherwise en.</summary>
         public static string T(string zh, string en)
         {
             return Chinese ? zh : en;
         }
 
-        /// <summary>启动时初始化: 先按语言配置判定，auto 时按 时区 + 公网 IP 判定。</summary>
+        /// <summary>启动时初始化: 先按语言配置判定，auto 时按 时区 + 公网 IP 判定。 / Initialize at startup: first decide from the language config; for auto, decide by time zone + public IP.</summary>
         public static void Initialize(string mode, string configuredTimeZone)
         {
             string m = (mode ?? "auto").Trim().ToLowerInvariant();
@@ -50,7 +50,7 @@ namespace Expas
                 return;
             }
 
-            // auto(以及无法识别的值): 时区优先给出离线结果，有网络再用公网 IP 复核
+            // auto(以及无法识别的值): 时区优先给出离线结果，有网络再用公网 IP 复核 / auto (and unrecognized values): give an offline result from the time zone first, then verify with the public IP when the network is available
             bool tzChina = DetectByTimeZone(configuredTimeZone);
             string country = TryGetCountryCode();
             if (country != null)
@@ -94,7 +94,7 @@ namespace Expas
                 || s == "prc" || s == "roc";
         }
 
-        /// <summary>中国区(含港澳台，均为中文玩家区)。</summary>
+        /// <summary>中国区(含港澳台，均为中文玩家区)。 / Chinese region (including HK/Macau/Taiwan; all are Chinese-speaking player regions).</summary>
         private static bool IsChineseRegion(string countryCode)
         {
             string c = (countryCode ?? string.Empty).ToUpperInvariant();
@@ -102,8 +102,8 @@ namespace Expas
         }
 
         /// <summary>
-        /// 公网 IP 归属地查询: 超时即放弃(离线服务器完全走时区判定)。
-        /// 只用纯文本/极简 JSON 接口，不引入任何依赖。
+        /// 公网 IP 归属地查询: 超时即放弃(离线服务器完全走时区判定)。 / Public IP location lookup: give up on timeout (offline servers rely entirely on time-zone detection).
+        /// 只用纯文本/极简 JSON 接口，不引入任何依赖。 / Uses only plain-text/minimal JSON endpoints, introducing no dependencies.
         /// </summary>
         private static string TryGetCountryCode()
         {
@@ -134,17 +134,17 @@ namespace Expas
                 }
                 catch
                 {
-                    // 无网络/被墙/超时 → 尝试下一个，最终回退时区判定
+                    // 无网络/被墙/超时 → 尝试下一个，最终回退时区判定 / No network/blocked/timeout → try the next one, ultimately falling back to time-zone detection
                 }
             }
             return null;
         }
 
-        // ==================== 配置文本 ====================
+        // ==================== 配置文本 ==================== / Config text
 
         /// <summary>
-        /// 把内置中文默认文案换成对应语言(只替换"仍是内置默认值"的项，不会覆盖管理员自定义内容)。
-        /// 返回是否有改动。
+        /// 把内置中文默认文案换成对应语言(只替换"仍是内置默认值"的项，不会覆盖管理员自定义内容)。 / Replace built-in Chinese default text with the corresponding language (only items still at built-in defaults; admin custom content is never overwritten).
+        /// 返回是否有改动。 / Returns whether anything changed.
         /// </summary>
         public static bool ApplyTextDefaults(ExpasPlugin.PluginConfig c)
         {
@@ -189,7 +189,7 @@ namespace Expas
             c.IconLockSelfBan = SwapValue(c.IconLockSelfBan, "[禁]", "[B]", ref changed);
             c.IconLockInactive = SwapValue(c.IconLockInactive, "[离]", "[I]", ref changed);
 
-            // 音频调用声明的两条内置示例(管理员在 config.yml 里看到的默认值)
+            // 音频调用声明的两条内置示例(管理员在 config.yml 里看到的默认值) / Two built-in examples of audio call declarations (the default values admins see in config.yml)
             if (c.AudioCalls != null)
             {
                 for (int i = 0; i < c.AudioCalls.Count; i++)
@@ -223,8 +223,8 @@ namespace Expas
         }
 
         /// <summary>
-        /// 把 config.yml 里的注释按当前语言回写(中文 ↔ English)。
-        /// LabAPI 生成注释时用的是 [Description] 原文(中文)，这里做一次就地翻译。
+        /// 把 config.yml 里的注释按当前语言回写(中文 ↔ English)。 / Rewrite comments in config.yml in the current language (Chinese ↔ English).
+        /// LabAPI 生成注释时用的是 [Description] 原文(中文)，这里做一次就地翻译。 / LabAPI generates comments from the original [Description] text (Chinese); this translates them in place.
         /// </summary>
         public static void LocalizeConfigFile(string path)
         {
@@ -256,7 +256,7 @@ namespace Expas
             }
             catch
             {
-                // 配置注释只是可读性增强，失败不影响插件运行
+                // 配置注释只是可读性增强，失败不影响插件运行 / Config comments only improve readability; failure does not affect plugin operation
             }
         }
 

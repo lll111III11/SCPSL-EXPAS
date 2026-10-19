@@ -1,12 +1,12 @@
 // ============================================================================
-//   EXPAS —— 帮助与"字段匹配"(简略显示)
-//   背景: SCP:SL 客户端只同步**命令名**给补全列表(QueryProcessor.CommandData:
-//         Command/Usage/Description/AliasOf/Hidden —— 见文档 06 号 L269-270),
-//         自定义插件的**参数**无法在客户端做补全。所以这里在**服务端**做"字段匹配":
-//           EXPAS                  → 简略用法总览
-//           EXPAS <关键字>          → 列出匹配的子命令 / 字段(前缀与包含匹配)
-//           EXPAS help [关键字]     → 同上
-//   目的: 管理员在 RA 面板敲 EXPAS 之后, 立刻知道"有什么子命令、什么字段、怎么用"。
+//   EXPAS —— 帮助与"字段匹配"(简略显示) / EXPAS — help and "field matching" (brief display)
+//   背景: SCP:SL 客户端只同步**命令名**给补全列表(QueryProcessor.CommandData: / Background: the SCP:SL client only syncs **command names** to the completion list (QueryProcessor.CommandData:
+//         Command/Usage/Description/AliasOf/Hidden —— 见文档 06 号 L269-270), / Command/Usage/Description/AliasOf/Hidden — see doc 06 L269-270),
+//         自定义插件的**参数**无法在客户端做补全。所以这里在**服务端**做"字段匹配": / custom plugin **parameters** cannot be completed on the client. So "field matching" is done **server-side** here:
+//           EXPAS                  → 简略用法总览 / EXPAS                  → brief usage overview
+//           EXPAS <关键字>          → 列出匹配的子命令 / 字段(前缀与包含匹配) / EXPAS <keyword>          → list matching subcommands / fields (prefix and contains matching)
+//           EXPAS help [关键字]     → 同上 / EXPAS help [keyword]     → same as above
+//   目的: 管理员在 RA 面板敲 EXPAS 之后, 立刻知道"有什么子命令、什么字段、怎么用"。 / Purpose: after typing EXPAS in the RA panel, admins immediately know "what subcommands and fields exist and how to use them".
 // ============================================================================
 using System;
 using System.Collections.Generic;
@@ -18,7 +18,7 @@ namespace Expas
 {
     public partial class ExpasPlugin
     {
-        /// <summary>一条帮助项: Keys=可匹配的别名(空格分隔), Usage=用法, Desc=一句话说明。</summary>
+        /// <summary>一条帮助项: Keys=可匹配的别名(空格分隔), Usage=用法, Desc=一句话说明。 / A help item: Keys=matchable aliases (space-separated), Usage=usage, Desc=one-line description.</summary>
         private sealed class HelpItem
         {
             public string Keys;
@@ -28,7 +28,7 @@ namespace Expas
             public string DescEn;
         }
 
-        /// <summary>子命令/字段帮助表(顺序即显示顺序)。</summary>
+        /// <summary>子命令/字段帮助表(顺序即显示顺序)。 / Subcommand/field help table (order is display order).</summary>
         private static readonly HelpItem[] HelpItems =
         {
             new HelpItem { Keys = "set add",       Usage = "set|add <玩家ID> <字段> <值>", UsageEn = "set|add <PlayerID> <Field> <Value>", Desc = "改数值字段(见「字段」)", DescEn = "Modify numeric Fields (see \"Fields\")" },
@@ -55,14 +55,14 @@ namespace Expas
             new HelpItem { Keys = "help",          Usage = "help [关键字]",                UsageEn = "help [keyword]", Desc = "帮助 / 字段匹配", DescEn = "Help / Field matching" },
         };
 
-        /// <summary>set|add 可用字段。</summary>
+        /// <summary>set|add 可用字段。 / Fields available for set|add.</summary>
         private static readonly string[] HelpFields =
         {
             "level", "exp", "points", "lock", "total_damage", "total_kills",
             "played_days", "today_play_time", "total_play_time"
         };
 
-        /// <summary>玩家ID 写法提示(三种解析方式均可在配置里开关)。属性形式: 每次取词，避免静态初始化早于语言检测。</summary>
+        /// <summary>玩家ID 写法提示(三种解析方式均可在配置里开关)。属性形式: 每次取词，避免静态初始化早于语言检测。 / PlayerID format hint (all three parsing methods can be toggled in the config). Property form: evaluated per call, avoiding static initialization before language detection.</summary>
         private static string HelpPlayerNote
         {
             get
@@ -76,13 +76,13 @@ namespace Expas
         }
 
         /// <summary>
-        /// 生成简略帮助: filter 为空 → 总览; 非空 → 只列匹配的子命令/字段。
+        /// 生成简略帮助: filter 为空 → 总览; 非空 → 只列匹配的子命令/字段。 / Generate brief help: empty filter → overview; non-empty → list only matching subcommands/fields.
         /// </summary>
         public string ExpasHelpText(string filter)
         {
             string f = (filter ?? string.Empty).Trim().ToLowerInvariant();
 
-            // ---- 无关键字: 简略总览(务必短, 便于 RA 面板阅读) ----
+            // ---- 无关键字: 简略总览(务必短, 便于 RA 面板阅读) ---- / ---- No keyword: brief overview (keep it short for easy reading in the RA panel) ----
             if (f.Length == 0)
             {
                 var sb = new StringBuilder();
@@ -101,10 +101,10 @@ namespace Expas
                 return sb.ToString();
             }
 
-            // ---- 有关键字: 匹配子命令 ----
+            // ---- 有关键字: 匹配子命令 ---- / ---- Keyword given: match subcommands ----
             var hits = HelpItems.Where(i => MatchesKey(i.Keys, f)).ToList();
 
-            // ---- 同时匹配 set|add 的字段名 ----
+            // ---- 同时匹配 set|add 的字段名 ---- / ---- Also match set|add field names ----
             var fieldHits = HelpFields.Where(x => x.Contains(f)).ToList();
 
             if (hits.Count == 0 && fieldHits.Count == 0)
@@ -128,7 +128,7 @@ namespace Expas
             return sb2.ToString();
         }
 
-        /// <summary>关键字是否命中该条目: 任一别名以 f 开头, 或包含 f。</summary>
+        /// <summary>关键字是否命中该条目: 任一别名以 f 开头, 或包含 f。 / Whether the keyword matches the entry: any alias starts with f, or contains f.</summary>
         private static bool MatchesKey(string keys, string f)
         {
             foreach (string k in keys.Split(' '))

@@ -1,18 +1,18 @@
 // ============================================================================
-//   EXPAS —— arsa 子系统: 重新识别"除自身以外"的全部插件(NP 层)
+//   EXPAS —— arsa 子系统: 重新识别"除自身以外"的全部插件(NP 层) / EXPAS — arsa subsystem: re-detect all plugins "other than itself" (NP layer)
 //   EXPAS arsa
-//     ① 重新读取文件:   重扫插件目录(PluginPaths: global / $port), 把**新出现**的 .dll
-//                        载入 PluginLoader 并启用(已在册的 DLL 不重复加载, 避免重复实例)。
-//     ② 重新读取配置文件: 对每个"非本插件"的插件重跑 TryLoadProperties()(properties.yml)
-//                        与 LoadConfigs()(config.yml) —— 即官方 ConfigsCommand 的做法。
-//   依据(LabAPI 官方源码, 路径 LabAPI-master/LabApi/Loader/)：
-//     · PluginLoader.cs(L27-57: Plugins/EnabledPlugins/Config;
-//        L153-235 LoadAllPlugins/LoadPlugins; L241-299 EnablePlugins/EnablePlugin)
-//     · Plugin{TConfig}.cs(L24-36: LoadConfigs() 重读 config.yml 到 Config)
-//     · ConfigurationLoader.cs(L235: TryLoadProperties(this Plugin) 重读 properties.yml)
-//     · Features/Commands/Reload/ConfigsCommand.cs(L44-56: 逐插件 LoadConfigs() 的官方范式)
-//   ★ 限制(.NET 本身): 程序集一经载入**无法卸载**(无 AssemblyLoadContext 卸载时),
-//     所以"磁盘上已替换同名 DLL"不会被重新读取; arsa 负责"重读配置 + 识别新增插件"。
+//     ① 重新读取文件:   重扫插件目录(PluginPaths: global / $port), 把**新出现**的 .dll / 1) Reload files: rescan plugin directories (PluginPaths: global / $port) and load **newly appeared** .dll files
+//                        载入 PluginLoader 并启用(已在册的 DLL 不重复加载, 避免重复实例)。 / into PluginLoader and enable them (already registered DLLs are not loaded again, avoiding duplicate instances).
+//     ② 重新读取配置文件: 对每个"非本插件"的插件重跑 TryLoadProperties()(properties.yml) / 2) Reload config files: for each plugin "other than this one", re-run TryLoadProperties() (properties.yml)
+//                        与 LoadConfigs()(config.yml) —— 即官方 ConfigsCommand 的做法。 / and LoadConfigs() (config.yml) — the same approach as the official ConfigsCommand.
+//   依据(LabAPI 官方源码, 路径 LabAPI-master/LabApi/Loader/)： / Basis (official LabAPI source, path LabAPI-master/LabApi/Loader/):
+//     · PluginLoader.cs(L27-57: Plugins/EnabledPlugins/Config; / · PluginLoader.cs (L27-57: Plugins/EnabledPlugins/Config;
+//        L153-235 LoadAllPlugins/LoadPlugins; L241-299 EnablePlugins/EnablePlugin) / L153-235 LoadAllPlugins/LoadPlugins; L241-299 EnablePlugins/EnablePlugin)
+//     · Plugin{TConfig}.cs(L24-36: LoadConfigs() 重读 config.yml 到 Config) / · Plugin{TConfig}.cs (L24-36: LoadConfigs() re-reads config.yml into Config)
+//     · ConfigurationLoader.cs(L235: TryLoadProperties(this Plugin) 重读 properties.yml) / · ConfigurationLoader.cs (L235: TryLoadProperties(this Plugin) re-reads properties.yml)
+//     · Features/Commands/Reload/ConfigsCommand.cs(L44-56: 逐插件 LoadConfigs() 的官方范式) / · Features/Commands/Reload/ConfigsCommand.cs (L44-56: official pattern of calling LoadConfigs() per plugin)
+//   ★ 限制(.NET 本身): 程序集一经载入**无法卸载**(无 AssemblyLoadContext 卸载时), / ★ Limitation (.NET itself): once an assembly is loaded it **cannot be unloaded** (without unloading via AssemblyLoadContext),
+//     所以"磁盘上已替换同名 DLL"不会被重新读取; arsa 负责"重读配置 + 识别新增插件"。 / so a replaced same-name DLL on disk will not be re-read; arsa handles "reload configs + detect newly added plugins".
 // ============================================================================
 using LabApi.Features.Wrappers;
 using LabApi.Loader;
@@ -32,10 +32,10 @@ namespace Expas
     public partial class ExpasPlugin
     {
         /// <summary>
-        /// EXPAS arsa: 重新识别除自身以外的全部插件(重读配置文件 + 重读文件)。
-        /// 返回给命令行的回执文本。
+        /// EXPAS arsa: 重新识别除自身以外的全部插件(重读配置文件 + 重读文件)。 / EXPAS arsa: re-detect all plugins except itself (reload config files + reload files).
+        /// 返回给命令行的回执文本。 / Returns the receipt text for the command line.
         /// </summary>
-        /// <param name="alsoRestart">true = 额外对其它插件执行 Disable→Enable(完整重跑, 慎用)。</param>
+        /// <param name="alsoRestart">true = 额外对其它插件执行 Disable→Enable(完整重跑, 慎用)。 / true = additionally perform Disable→Enable on other plugins (full restart, use with caution).</param>
         public string ArsaReloadOthers(bool alsoRestart = false)
         {
             var sb = new StringBuilder("[EXPAS arsa] " + L.T("重新识别其它插件", "Re-detecting other Plugins"));
@@ -48,7 +48,7 @@ namespace Expas
 
                 ExpasPlugin self = Instance;
 
-                // ---------------- ① 重新读取文件: 重扫插件目录, 载入新增 DLL ----------------
+                // ---------------- ① 重新读取文件: 重扫插件目录, 载入新增 DLL ---------------- / 1) Reload files: rescan the plugin directory and load newly added DLLs
                 int loadedNew = RescanAndLoadNewPlugins(out List<string> newNames);
                 if (loadedNew > 0)
                     sb.Append(L.T($"\n① 重读文件: 新载入并启用 {loadedNew} 个插件 → {string.Join(", ", newNames)}",
@@ -57,8 +57,8 @@ namespace Expas
                     sb.Append(L.T("\n① 重读文件: 插件目录无新增 DLL(已载入的不重复加载)",
                                   "\n① Reloaded files: no new DLLs in the Plugin directory (already loaded ones are not reloaded)"));
 
-                // ---------------- ② 重新读取配置文件: properties.yml + config.yml ----------------
-                // 快照 Keys 后再操作(载入新插件会改动 Plugins 字典)
+                // ---------------- ② 重新读取配置文件: properties.yml + config.yml ---------------- / 2) Reload config files: properties.yml + config.yml
+                // 快照 Keys 后再操作(载入新插件会改动 Plugins 字典) / Snapshot the Keys before operating (loading new plugins modifies the Plugins dictionary)
                 List<Plugin> others = plugins.Keys
                     .Where(p => p != null && !ReferenceEquals(p, self)
                                 && !string.Equals(p.Name, Name, StringComparison.OrdinalIgnoreCase))
@@ -72,11 +72,11 @@ namespace Expas
                 {
                     try
                     {
-                        // properties.yml(是否启用/不支持加载开关等)
+                        // properties.yml(是否启用/不支持加载开关等) / properties.yml (enabled flag / unsupported-load switch, etc.)
                         try { p.TryLoadProperties(); okProps++; }
                         catch (Exception ex) { failed.Add($"{p.Name}(properties): {ex.Message}"); }
 
-                        // config.yml(重读到 p.Config)
+                        // config.yml(重读到 p.Config) / config.yml (re-read into p.Config)
                         p.LoadConfigs();
                         okCfg++;
                     }
@@ -86,7 +86,7 @@ namespace Expas
                     }
                 }
 
-                // 可选: 完整重跑(Disable → Enable)
+                // 可选: 完整重跑(Disable → Enable) / Optional: full restart (Disable → Enable)
                 if (alsoRestart)
                 {
                     foreach (Plugin p in others)
@@ -137,8 +137,8 @@ namespace Expas
         }
 
         /// <summary>
-        /// 重扫 PluginPaths(global / $port, 支持 $port 替换) 下的 *.dll，
-        /// 把尚未登记(按 FilePath 去重)的 DLL 载入并启用。返回新载入的插件数。
+        /// 重扫 PluginPaths(global / $port, 支持 $port 替换) 下的 *.dll， / Rescan *.dll under PluginPaths (global / $port, supports $port replacement),
+        /// 把尚未登记(按 FilePath 去重)的 DLL 载入并启用。返回新载入的插件数。 / load and enable DLLs not yet registered (deduped by FilePath). Returns the number of newly loaded plugins.
         /// </summary>
         private int RescanAndLoadNewPlugins(out List<string> newNames)
         {
@@ -148,7 +148,7 @@ namespace Expas
                 Dictionary<Plugin, Assembly> plugins = PluginLoader.Plugins;
                 if (plugins == null) return 0;
 
-                // 已在册的插件文件路径(去重: 同名 DLL 不再重复载入, 否则会产生重复插件实例)
+                // 已在册的插件文件路径(去重: 同名 DLL 不再重复载入, 否则会产生重复插件实例) / Paths of already registered plugin files (dedupe: same-name DLLs are not loaded again, otherwise duplicate plugin instances are created)
                 var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (Plugin p in plugins.Keys)
                 {
@@ -156,7 +156,7 @@ namespace Expas
                     if (!string.IsNullOrEmpty(p.FilePath)) known.Add(p.FilePath);
                 }
 
-                // 解析 PluginPaths(LabApi 配置: 默认 {"global","$port"})
+                // 解析 PluginPaths(LabApi 配置: 默认 {"global","$port"}) / Parse PluginPaths (LabApi config: default {"global","$port"})
                 List<string> patterns = null;
                 try { patterns = PluginLoader.Config?.PluginPaths; } catch { }
                 if (patterns == null || patterns.Count == 0)
@@ -175,10 +175,10 @@ namespace Expas
                 if (files.Count == 0) return 0;
 
                 int before = plugins.Count;
-                // 官方载入入口(含 PDB 支持 / 内嵌资源解析 / InstantiatePlugins)
+                // 官方载入入口(含 PDB 支持 / 内嵌资源解析 / InstantiatePlugins) / Official load entry point (includes PDB support / embedded resource resolution / InstantiatePlugins)
                 PluginLoader.LoadPlugins(files);
 
-                // 找出这批新文件对应的插件实例, 交给官方启用流程(含 properties/版本校验)
+                // 找出这批新文件对应的插件实例, 交给官方启用流程(含 properties/版本校验) / Find the plugin instances corresponding to this batch of new files and hand them to the official enable flow (including properties/version validation)
                 var fresh = plugins.Keys
                     .Where(p => p != null && files.Any(f =>
                         string.Equals(f.FullName, p.FilePath, StringComparison.OrdinalIgnoreCase)))

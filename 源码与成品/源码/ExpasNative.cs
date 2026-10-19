@@ -1,15 +1,15 @@
 // ============================================================================
-//   EXPAS —— 原生解码互操作(NP 层, v2.5)
-//   目标: 用**自建的原生 DLL 解码器**(而非 exe)解码 OGG/MP3/AAC/M4A/MP4/FLAC/WMA…
+//   EXPAS —— 原生解码互操作(NP 层, v2.5) / EXPAS — native decoding interop (NP layer, v2.5)
+//   目标: 用**自建的原生 DLL 解码器**(而非 exe)解码 OGG/MP3/AAC/M4A/MP4/FLAC/WMA… / Goal: use a **self-built native DLL decoder** (instead of an exe) to decode OGG/MP3/AAC/M4A/MP4/FLAC/WMA…
 //
-//   构成:
-//     · EXPAS.AudioCodec.dll —— 我们自己写的 C 包装层(源码 expas_codec.c),
-//       内部调用 ffmpeg 共享库, 对外只暴露 3 个极简 C 函数
+//   构成: / Components:
+//     · EXPAS.AudioCodec.dll —— 我们自己写的 C 包装层(源码 expas_codec.c), / · EXPAS.AudioCodec.dll — our own C wrapper layer (source expas_codec.c),
+//       内部调用 ffmpeg 共享库, 对外只暴露 3 个极简 C 函数 / calls ffmpeg shared libraries internally and exposes only 3 minimal C functions
 //     · avformat-*.dll / avcodec-*.dll / avutil-*.dll / swresample-*.dll
-//       —— 从 ffmpeg n9.0.1 源码用 mingw-w64 现场编译出来的共享库
+//       —— 从 ffmpeg n9.0.1 源码用 mingw-w64 现场编译出来的共享库 / — shared libraries compiled on-site from ffmpeg n9.0.1 source with mingw-w64
 //
-//   这些 DLL 都作为**内嵌资源**打进 EXPAS.NP.dll, 首次用到时释放到 EXPAS\bin\native\,
-//   再用 LoadLibrary 显式加载(不依赖 .NET 的 DllImport 探测路径, 也不污染插件目录)。
+//   这些 DLL 都作为**内嵌资源**打进 EXPAS.NP.dll, 首次用到时释放到 EXPAS\bin\native\, / These DLLs are packed into EXPAS.NP.dll as **embedded resources** and extracted to EXPAS\bin\native\ on first use,
+//   再用 LoadLibrary 显式加载(不依赖 .NET 的 DllImport 探测路径, 也不污染插件目录)。 / then loaded explicitly with LoadLibrary (no reliance on .NET's DllImport probing paths, and no pollution of the plugin directory).
 // ============================================================================
 using System;
 using System.IO;
@@ -22,13 +22,13 @@ namespace Expas
 {
     public partial class ExpasPlugin
     {
-        // ---------- 内嵌资源前缀(资源名形如 native.avcodec-63.dll.bin) ----------
-        //   ★ 为什么叫 ".dll.bin" 而不是 ".dll":
-        //     LabAPI 的 AssemblyUtils.ResolveEmbeddedResources() 会对**每个**插件无条件执行,
-        //     凡资源名以 ".dll" / ".dll.compressed" 结尾的都会被当成"内嵌托管程序集"
-        //     丢给 AssemblyName.GetAssemblyName(), 原生二进制会炸出
-        //     BadImageFormatException(日志里那串 ERROR)。
-        //     所以这里统一加 ".bin" 后缀, LabAPI 直接跳过, 释放时再由我们自己剥掉。
+        // ---------- 内嵌资源前缀(资源名形如 native.avcodec-63.dll.bin) ---------- / Embedded resource prefix (resource names look like native.avcodec-63.dll.bin)
+        //   ★ 为什么叫 ".dll.bin" 而不是 ".dll": / ★ Why ".dll.bin" instead of ".dll":
+        //     LabAPI 的 AssemblyUtils.ResolveEmbeddedResources() 会对**每个**插件无条件执行, / LabAPI's AssemblyUtils.ResolveEmbeddedResources() runs unconditionally for **every** plugin,
+        //     凡资源名以 ".dll" / ".dll.compressed" 结尾的都会被当成"内嵌托管程序集" / any resource name ending in ".dll" / ".dll.compressed" is treated as an "embedded managed assembly"
+        //     丢给 AssemblyName.GetAssemblyName(), 原生二进制会炸出 / and handed to AssemblyName.GetAssemblyName(); a native binary then throws
+        //     BadImageFormatException(日志里那串 ERROR)。 / BadImageFormatException (that string of ERRORs in the log).
+        //     所以这里统一加 ".bin" 后缀, LabAPI 直接跳过, 释放时再由我们自己剥掉。 / So a ".bin" suffix is added uniformly here; LabAPI skips it and we strip it ourselves when extracting.
         private const string NativeResPrefix = "native.";
         private const string NativeResSuffix = ".bin";
         private const string WrapperDllName = "EXPAS.AudioCodec.dll";
@@ -41,9 +41,9 @@ namespace Expas
         private ExpasFreeFn _nativeFree;
 
         // ---------- kernel32 ----------
-        // 用 LoadLibraryExW + LOAD_WITH_ALTERED_SEARCH_PATH(0x8):
-        // 让 Windows 在**该 DLL 自己所在目录**里找它的依赖(avcodec-63.dll 等),
-        // 否则依赖解析会从 EXE 目录/PATH 找 → 报 err=126。
+        // 用 LoadLibraryExW + LOAD_WITH_ALTERED_SEARCH_PATH(0x8): / Use LoadLibraryExW + LOAD_WITH_ALTERED_SEARCH_PATH (0x8):
+        // 让 Windows 在**该 DLL 自己所在目录**里找它的依赖(avcodec-63.dll 等), / so Windows looks for its dependencies (avcodec-63.dll, etc.) in **the DLL's own directory**,
+        // 否则依赖解析会从 EXE 目录/PATH 找 → 报 err=126。 / otherwise dependency resolution searches the EXE directory/PATH → err=126.
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
         private static extern IntPtr LoadLibraryExW(string lpFileName, IntPtr hFile, uint dwFlags);
 
@@ -52,7 +52,7 @@ namespace Expas
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi, BestFitMapping = false)]
         private static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
 
-        // ---------- 我们包装层的 3 个导出函数 ----------
+        // ---------- 我们包装层的 3 个导出函数 ---------- / The 3 exported functions of our wrapper layer
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate int ExpasDecodeFn(IntPtr pathUtf8, int targetRate, int targetChannels,
                                            out IntPtr data, out int samples, byte[] err, int errLen);
@@ -63,13 +63,13 @@ namespace Expas
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate IntPtr ExpasVersionFn();
 
-        /// <summary>原生解码目录: EXPAS\bin\native\。</summary>
+        /// <summary>原生解码目录: EXPAS\bin\native\。 / Native decoding directory: EXPAS\bin\native\.</summary>
         public string NativeDir => Path.Combine(BinDir, "native");
 
-        /// <summary>原生解码器是否可用(不可用时回落 ffmpeg.exe / 仅 WAV)。</summary>
+        /// <summary>原生解码器是否可用(不可用时回落 ffmpeg.exe / 仅 WAV)。 / Whether the native decoder is available (falls back to ffmpeg.exe / WAV only when unavailable).</summary>
         public bool NativeCodecAvailable { get { EnsureNative(); return _nativeOk; } }
 
-        /// <summary>原生解码器版本串(不可用返回 null)。</summary>
+        /// <summary>原生解码器版本串(不可用返回 null)。 / Native decoder version string (returns null when unavailable).</summary>
         public string NativeCodecVersion
         {
             get
@@ -88,8 +88,8 @@ namespace Expas
         }
 
         /// <summary>
-        /// 释放内嵌原生 DLL 并加载包装层(幂等)。成功返回 true。
-        /// 释放目标: EXPAS\bin\native\
+        /// 释放内嵌原生 DLL 并加载包装层(幂等)。成功返回 true。 / Extract embedded native DLLs and load the wrapper layer (idempotent). Returns true on success.
+        /// 释放目标: EXPAS\bin\native\ / Extraction target: EXPAS\bin\native\
         /// </summary>
         public bool EnsureNative()
         {
@@ -157,8 +157,8 @@ namespace Expas
         }
 
         /// <summary>
-        /// 用原生解码器把任意格式解成 f32 单声道 48kHz。失败返回 false 并给出 error。
-        /// 路径以 UTF-8 传给 C 层(中文路径也安全)。
+        /// 用原生解码器把任意格式解成 f32 单声道 48kHz。失败返回 false 并给出 error。 / Use the native decoder to decode any format into f32 mono 48kHz. Returns false with an error on failure.
+        /// 路径以 UTF-8 传给 C 层(中文路径也安全)。 / The path is passed to the C layer as UTF-8 (Chinese paths are safe too).
         /// </summary>
         public bool TryNativeDecode(string path, out float[] samples, out string error)
         {

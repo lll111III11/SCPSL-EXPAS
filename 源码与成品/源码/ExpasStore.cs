@@ -1,9 +1,9 @@
 // ============================================================================
-// EXPAS —— 数据层 (partial)
-//   一个玩家一个文件: configs\<服务器端口>\EXPAS\players\<steam64>.dat  (key=value, 便于解析)
-//     (v1.4 起规范到 LabAPI 官方目录; 旧位置 configs\EXPAS\players\ 会在启动时自动复制过来, 不删旧文件)
-//   另写 index.txt 汇总(用户/等级/最后在线), 供长期未上线扫描与人工查看
-//   所有数字/时间都用 InvariantCulture, 避免不同区域设置把小数点解析错
+// EXPAS —— 数据层 (partial) / EXPAS — data layer (partial)
+//   一个玩家一个文件: configs\<服务器端口>\EXPAS\players\<steam64>.dat  (key=value, 便于解析) / One file per player: configs\<server port>\EXPAS\players\<steam64>.dat (key=value, easy to parse)
+//     (v1.4 起规范到 LabAPI 官方目录; 旧位置 configs\EXPAS\players\ 会在启动时自动复制过来, 不删旧文件) / (since v1.4 standardized to the official LabAPI directory; the old location configs\EXPAS\players\ is copied over at startup without deleting old files)
+//   另写 index.txt 汇总(用户/等级/最后在线), 供长期未上线扫描与人工查看 / Also writes an index.txt summary (user/level/last seen) for long-offline scanning and manual inspection
+//   所有数字/时间都用 InvariantCulture, 避免不同区域设置把小数点解析错 / All numbers/times use InvariantCulture to avoid decimal-point parsing errors under different regional settings
 // ============================================================================
 using LabApi.Features.Wrappers;
 using LabApi.Loader.Features.Paths;
@@ -21,88 +21,88 @@ namespace Expas
 {
     public partial class ExpasPlugin
     {
-        /// <summary>单个玩家的持久化数据(按 Steam64 记录)。</summary>
+        /// <summary>单个玩家的持久化数据(按 Steam64 记录)。 / Persistent data for a single player (recorded by Steam64).</summary>
         public class PlayerData
         {
             public string UserId = string.Empty;
             public string Name = string.Empty;
             public int Level = 1;
-            public float Exp = 0f;              // 当前等级内经验
-            public float TotalExp = 0f;         // 累计总经验
-            public float TotalDamage = 0f;      // 累计总伤害(已入账)
-            public float PendingExp = 0f;       // 🔒 锁定期间叠加的经验(解锁时入账)
-            public float PendingDamage = 0f;    // 🔒 锁定期间的伤害
-            public int Kills = 0;               // 总击杀(= 指令字段 total_kills)
+            public float Exp = 0f;              // 当前等级内经验 / EXP within the current level
+            public float TotalExp = 0f;         // 累计总经验 / Total accumulated EXP
+            public float TotalDamage = 0f;      // 累计总伤害(已入账) / Total accumulated damage (credited)
+            public float PendingExp = 0f;       // 🔒 锁定期间叠加的经验(解锁时入账) / EXP accumulated while locked (credited on unlock)
+            public float PendingDamage = 0f;    // 🔒 锁定期间的伤害 / Damage while locked
+            public int Kills = 0;               // 总击杀(= 指令字段 total_kills) / Total kills (= command field total_kills)
             public int Deaths = 0;
-            public double PlaySeconds = 0d;     // 累计游玩时间(秒)(= 指令字段 total_play_time)
-            // ---- v1.5 规格字段(都可由 EXPAS <set|add> <玩家> <字段> <值> 修改并持久化) ----
-            public int PlayedDays = 0;          // 游玩天数(played_days); <=0 = 未设置, 按 FirstSeen 推算
-            public double TodayPlaySeconds = 0d;// 今日游玩时间(秒)(today_play_time)
-            public string TodayDate = string.Empty; // 今日游玩时间所属日期(yyyy-MM-dd, 按配置时区); 跨天自动归零
-            /// <summary>仅运行期标记: 本次是从旧数据文件迁移来的(lock/longOffline 口径变了), 首次访问时回写一次。</summary>
+            public double PlaySeconds = 0d;     // 累计游玩时间(秒)(= 指令字段 total_play_time) / Total playtime in seconds (= command field total_play_time)
+            // ---- v1.5 规格字段(都可由 EXPAS <set|add> <玩家> <字段> <值> 修改并持久化) ---- / ---- v1.5 spec fields (all modifiable and persisted via EXPAS <set|add> <player> <field> <value>) ----
+            public int PlayedDays = 0;          // 游玩天数(played_days); <=0 = 未设置, 按 FirstSeen 推算 / Played days (played_days); <=0 = unset, derived from FirstSeen
+            public double TodayPlaySeconds = 0d;// 今日游玩时间(秒)(today_play_time) / Today's playtime in seconds (today_play_time)
+            public string TodayDate = string.Empty; // 今日游玩时间所属日期(yyyy-MM-dd, 按配置时区); 跨天自动归零 / Date of today's playtime (yyyy-MM-dd, in the configured time zone); resets on a new day
+            /// <summary>仅运行期标记: 本次是从旧数据文件迁移来的(lock/longOffline 口径变了), 首次访问时回写一次。 / Runtime-only flag: this record was migrated from an old data file (lock/longOffline semantics changed); written back once on first access.</summary>
             public bool LockMigrated = false;
             public DateTime FirstSeen = DateTime.UtcNow;
             public DateTime LastSeen = DateTime.UtcNow;
             public int LockState = LockNone;    // 0=none 1=punishment🚫 2=selfban🔒 3=inactive🕒
-            public bool LongOffline = false;    // 🕒(旧字段; 与 LockState==LockInactive 双向同步, 仅为兼容旧读法)
-            public int HudSize = int.MinValue;  // (旧字段, 仅兼容读取)
-            // ---- HUD 个人设置(-1 = 用服务器配置; 全部按 Steam64 记住) ----
-            public int SizePercent = -1;         // 字号 %
-            public int ScreenPercent = -1;       // 屏幕缩放 %
-            public int LineHeightPercent = -1;   // 行距 %
-            public int VOffset = 0;              // 垂直微调(像素, 负=上移)
-            public int HAlign = -1;              // 整块水平对齐 0左 1中 2右
-            public int LevelAlign = -1;          // 等级块对齐 0左 1中 2右 3跟随
-            public int HudEnabledSet = 1;        // 1=HUD开 0=HUD关
-            // ---- v1.3 积分 / 最近一次击杀 ----
-            public float Points = 0f;             // 累计积分
+            public bool LongOffline = false;    // 🕒(旧字段; 与 LockState==LockInactive 双向同步, 仅为兼容旧读法) / 🕒 (legacy field; kept in sync with LockState==LockInactive both ways, only for legacy readers)
+            public int HudSize = int.MinValue;  // (旧字段, 仅兼容读取) / (legacy field, read-only compatibility)
+            // ---- HUD 个人设置(-1 = 用服务器配置; 全部按 Steam64 记住) ---- / ---- Per-player HUD settings (-1 = use server config; all remembered per Steam64) ----
+            public int SizePercent = -1;         // 字号 % / Font size %
+            public int ScreenPercent = -1;       // 屏幕缩放 % / Screen scale %
+            public int LineHeightPercent = -1;   // 行距 % / Line height %
+            public int VOffset = 0;              // 垂直微调(像素, 负=上移) / Vertical fine-tune (px, negative = up)
+            public int HAlign = -1;              // 整块水平对齐 0左 1中 2右 / Whole-block horizontal alignment 0=left 1=center 2=right
+            public int LevelAlign = -1;          // 等级块对齐 0左 1中 2右 3跟随 / Level-block alignment 0=left 1=center 2=right 3=follow
+            public int HudEnabledSet = 1;        // 1=HUD开 0=HUD关 / 1=HUD on 0=HUD off
+            // ---- v1.3 积分 / 最近一次击杀 ---- / ---- v1.3 points / latest kill ----
+            public float Points = 0f;             // 累计积分 / Total points
             public string LastKillName = "-";
-            public float LastKillDamage = 0f;      // 造成伤害
-            public float LastKillShare = 0f;       // 对该目标的伤害占比 %
-            public float LastKillPoints = 0f;      // 本次获得积分
-            // ---- v1.5 击杀确认(改造2): 记录"被击杀的是什么角色" ----
-            public string LastKillRole = "-";      // 受害者角色(RoleTypeId 名, 例 NtfSergeant; 受害者是 dummy 也照记)
-            public string LastKillRoleKind = "-";  // 该角色类型: 人形 / SCP / 人机 / 其它(旧 .dat 缺该键 = "-")
-            // ---- v1.6 分辨率档位 / 整体缩放 / HUD 折叠(-1 = 跟随服务器 config.yml 里的同名项) ----
-            public int ResolutionPreset = -1;      // 0=自动检测(按宽高比) 1..15=具体分辨率档(见 docs 倍率表)
-            public int GlobalScalePercent = -1;    // 整体缩放 %(50..200), 在「字号×屏幕缩放」之外再乘一次
-            public int HudCollapsed = -1;          // 0=展开 1=折叠(折叠时屏幕 HUD 只显示 hud_collapsed_line 一行)
-            // ---- v1.7/v1.8 自定义 UI 布局(按 Steam64 记住; 布局文件 = configs\<端口>\EXPAS\layouts\<key>.txt|.js) ----
-            //   v1.8 可见性以"布局文件的 owner Steam64 归属匹配"为准(白名单 CustomUiWhitelist 仅作兼容覆盖):
-            //   玩家进服时检测 ID, 归属匹配才在 SSS 面板里出现「自定义 UI」下拉; 否则一律按 "default" 渲染。
-            public string HudLayout = "default";   // 布局 key(文件名去扩展名); 默认 "default"
-            // ---- v2.0 称号系统(三层, 基于 CustomInfo) ----
-            public int TitlePlan = 0;                 // 0=不干预 1=无称号才设(层1) 2=强制替换(层2) 3=彻底清除(层3)
-            public string TitleText = string.Empty;   // 称号文本
-            // (本轮改造: 称号字段 Title 已随称号功能整体删除 —— 旧 .dat 里的 title= 行会被 LoadFromDisk 直接忽略)
+            public float LastKillDamage = 0f;      // 造成伤害 / Damage dealt
+            public float LastKillShare = 0f;       // 对该目标的伤害占比 % / Damage share against that target %
+            public float LastKillPoints = 0f;      // 本次获得积分 / Points gained this time
+            // ---- v1.5 击杀确认(改造2): 记录"被击杀的是什么角色" ---- / ---- v1.5 kill confirmation (rework 2): record "what role was killed" ----
+            public string LastKillRole = "-";      // 受害者角色(RoleTypeId 名, 例 NtfSergeant; 受害者是 dummy 也照记) / Victim role (RoleTypeId name, e.g. NtfSergeant; dummies are recorded too)
+            public string LastKillRoleKind = "-";  // 该角色类型: 人形 / SCP / 人机 / 其它(旧 .dat 缺该键 = "-") / Role kind: human / SCP / dummy / other (missing key in old .dat = "-")
+            // ---- v1.6 分辨率档位 / 整体缩放 / HUD 折叠(-1 = 跟随服务器 config.yml 里的同名项) ---- / ---- v1.6 resolution preset / global scale / HUD collapse (-1 = follow the same-named item in the server config.yml) ----
+            public int ResolutionPreset = -1;      // 0=自动检测(按宽高比) 1..15=具体分辨率档(见 docs 倍率表) / 0=auto-detect (by aspect ratio) 1..15=specific resolution preset (see docs multiplier table)
+            public int GlobalScalePercent = -1;    // 整体缩放 %(50..200), 在「字号×屏幕缩放」之外再乘一次 / Global scale % (50..200), multiplied once more on top of "font size × screen scale"
+            public int HudCollapsed = -1;          // 0=展开 1=折叠(折叠时屏幕 HUD 只显示 hud_collapsed_line 一行) / 0=expanded 1=collapsed (collapsed: screen HUD shows only the single hud_collapsed_line line)
+            // ---- v1.7/v1.8 自定义 UI 布局(按 Steam64 记住; 布局文件 = configs\<端口>\EXPAS\layouts\<key>.txt|.js) ---- / ---- v1.7/v1.8 custom UI layout (remembered per Steam64; layout file = configs\<port>\EXPAS\layouts\<key>.txt|.js) ----
+            //   v1.8 可见性以"布局文件的 owner Steam64 归属匹配"为准(白名单 CustomUiWhitelist 仅作兼容覆盖): / v1.8 visibility is based on "ownership match with the layout file's owner Steam64" (the CustomUiWhitelist only acts as a compatibility override):
+            //   玩家进服时检测 ID, 归属匹配才在 SSS 面板里出现「自定义 UI」下拉; 否则一律按 "default" 渲染。 / the ID is checked when the player joins; only an ownership match shows the "Custom UI" dropdown in the SSS panel, otherwise everything renders as "default".
+            public string HudLayout = "default";   // 布局 key(文件名去扩展名); 默认 "default" / Layout key (file name without extension); default "default"
+            // ---- v2.0 称号系统(三层, 基于 CustomInfo) ---- / ---- v2.0 title system (three tiers, based on CustomInfo) ----
+            public int TitlePlan = 0;                 // 0=不干预 1=无称号才设(层1) 2=强制替换(层2) 3=彻底清除(层3) / 0=do nothing 1=set only if none (tier 1) 2=force replace (tier 2) 3=clear completely (tier 3)
+            public string TitleText = string.Empty;   // 称号文本 / Title text
+            // (本轮改造: 称号字段 Title 已随称号功能整体删除 —— 旧 .dat 里的 title= 行会被 LoadFromDisk 直接忽略) / (this rework: the Title field was removed along with the title feature — the title= line in old .dat files is ignored by LoadFromDisk)
         }
 
         private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
         /// <summary>
-        /// 旧文件名键(SafeId 形式, 即文件名主干, 例 76561198000000000steam) → 真 UserId(例 76561198000000000@steam)。
-        /// v1.4: 老库的键口径是文件名, 新口径统一用文件里的 userId= 行; 这张别名表让"按文件名查找"依旧可用,
-        /// 同时保证 _cache 里同一个人只有一条记录(index.txt 不再出现重复行)。
+        /// 旧文件名键(SafeId 形式, 即文件名主干, 例 76561198000000000steam) → 真 UserId(例 76561198000000000@steam)。 / Old file-name key (SafeId form, i.e. the file name stem, e.g. 76561198000000000steam) → real UserId (e.g. 76561198000000000@steam).
+        /// v1.4: 老库的键口径是文件名, 新口径统一用文件里的 userId= 行; 这张别名表让"按文件名查找"依旧可用, / v1.4: legacy databases were keyed by file name, while the new scheme uses the userId= line in the file; this alias table keeps "lookup by file name" working,
+        /// 同时保证 _cache 里同一个人只有一条记录(index.txt 不再出现重复行)。 / and ensures the same person has only one record in _cache (no more duplicate lines in index.txt).
         /// </summary>
         private readonly Dictionary<string, string> _keyAlias = new Dictionary<string, string>();
 
         /// <summary>
-        /// v1.4 官方配置根目录: configs\&lt;服务器端口&gt;\EXPAS
-        ///   依据: 文档 21_UI系统权威参考 L124 与 22_完整性校验报告 L187
-        ///         (真实路径 = configs\&lt;Server.Port&gt;\&lt;插件名&gt;\, isGlobal=true 才落 configs\global\);
-        ///         源码 ConfigurationLoader.GetConfigDirectory(L_710-712):
+        /// v1.4 官方配置根目录: configs\&lt;服务器端口&gt;\EXPAS / v1.4 official config root directory: configs\&lt;server port&gt;\EXPAS
+        ///   依据: 文档 21_UI系统权威参考 L124 与 22_完整性校验报告 L187 / Basis: docs 21_UI系统权威参考 L124 and 22_完整性校验报告 L187
+        ///         (真实路径 = configs\&lt;Server.Port&gt;\&lt;插件名&gt;\, isGlobal=true 才落 configs\global\); / (real path = configs\&lt;Server.Port&gt;\&lt;plugin name&gt;\, only isGlobal=true goes to configs\global\);
+        ///         源码 ConfigurationLoader.GetConfigDirectory(L_710-712): / source ConfigurationLoader.GetConfigDirectory (L_710-712):
         ///         PathManager.Configs.CreateSubdirectory(isGlobal ? "global" : Server.Port.ToString())
         ///         .CreateSubdirectory(plugin.Name); PathManager.Configs(L_1457); Server.Port(L_15739)。
-        /// 优先用 LabAPI 官方路径入口 GetConfigDirectory(this) —— 它按端口建子目录,
-        /// 返回的正好也是本插件 config.yml 所在目录, 不再自己拼 %APPDATA%。
+        /// 优先用 LabAPI 官方路径入口 GetConfigDirectory(this) —— 它按端口建子目录, / Prefer LabAPI's official path entry GetConfigDirectory(this) — it creates a subdirectory per port,
+        /// 返回的正好也是本插件 config.yml 所在目录, 不再自己拼 %APPDATA%。 / and returns exactly the directory where this plugin's config.yml lives; no more manual %APPDATA% concatenation.
         /// </summary>
         private DirectoryInfo ConfigDirInfo
         {
             get
             {
-                // ① 官方入口(扩展方法在 LabApi.Loader.ConfigurationLoader, 见 L610; 全名调用避免额外 using)
+                // ① 官方入口(扩展方法在 LabApi.Loader.ConfigurationLoader, 见 L610; 全名调用避免额外 using) / 1) Official entry (extension method in LabApi.Loader.ConfigurationLoader, see L610; fully qualified to avoid an extra using)
                 try { return LabApi.Loader.ConfigurationLoader.GetConfigDirectory(this); } catch { }
-                try                                                                   // ② 兜底: 官方常量自己拼
+                try                                                                   // ② 兜底: 官方常量自己拼 / 2) Fallback: build manually from official constants
                 {
                     return PathManager.Configs.CreateSubdirectory(Server.Port.ToString()).CreateSubdirectory(Name);
                 }
@@ -116,7 +116,7 @@ namespace Expas
             get
             {
                 DirectoryInfo dir = ConfigDirInfo;
-                // ③ 最后兜底: 万一 LabAPI 路径尚未就绪, 退回旧位置, 至少不丢数据
+                // ③ 最后兜底: 万一 LabAPI 路径尚未就绪, 退回旧位置, 至少不丢数据 / 3) Final fallback: if LabAPI paths are not ready yet, fall back to the old location so at least no data is lost
                 string root = dir != null
                     ? dir.FullName
                     : Path.Combine(
@@ -141,8 +141,8 @@ namespace Expas
         private string FileOf(string userId) => Path.Combine(PlayerDir, SafeId(userId) + ".dat");
 
         /// <summary>
-        /// v1.4 旧库自动迁移: configs\EXPAS\players\ → configs\&lt;端口&gt;\EXPAS\players\。
-        /// 只在"新目录还没有任何 .dat"时复制; **旧文件一律保留不删除**, 留给用户自己确认后清理。
+        /// v1.4 旧库自动迁移: configs\EXPAS\players\ → configs\&lt;端口&gt;\EXPAS\players\。 / v1.4 automatic legacy database migration: configs\EXPAS\players\ → configs\&lt;port&gt;\EXPAS\players\.
+        /// 只在"新目录还没有任何 .dat"时复制; **旧文件一律保留不删除**, 留给用户自己确认后清理。 / Copy only when "the new directory has no .dat files yet"; **old files are always kept**, left for the user to clean up after confirming.
         /// </summary>
         private void MigrateLegacyPlayersDir()
         {
@@ -187,9 +187,9 @@ namespace Expas
         }
 
         // ========================================================================
-        // 等级公式
+        // 等级公式 / Level formula
         // ========================================================================
-        /// <summary>从 level 升到 level+1 所需经验。</summary>
+        /// <summary>从 level 升到 level+1 所需经验。 / EXP required to go from level to level+1.</summary>
         public static float ExpNeeded(int level)
         {
             ExpasPlugin pl = Instance;
@@ -200,18 +200,18 @@ namespace Expas
         }
 
         // ========================================================================
-        // 读取 / 写入
+        // 读取 / 写入 / Read / write
         // ========================================================================
         /// <summary>
-        /// 取玩家数据。v1.4 修正(修 index.txt 重复行): 缓存 **统一以真 UserId 为键**。
-        /// 以前入参若是"文件名主干"(SafeId 去 @ 后的结果)也会被当成 key 塞进 _cache,
-        /// 于是同一个人存在两条记录 → index.txt 每人重复一行。现在文件名只走 _keyAlias 兼容查找。
+        /// 取玩家数据。v1.4 修正(修 index.txt 重复行): 缓存 **统一以真 UserId 为键**。 / Get player data. v1.4 fix (duplicate index.txt lines): the cache is now **uniformly keyed by the real UserId**.
+        /// 以前入参若是"文件名主干"(SafeId 去 @ 后的结果)也会被当成 key 塞进 _cache, / Previously, if the argument was a "file-name stem" (the result of SafeId stripping @), it was also used as a key in _cache,
+        /// 于是同一个人存在两条记录 → index.txt 每人重复一行。现在文件名只走 _keyAlias 兼容查找。 / so the same person had two records → one duplicate line per person in index.txt. Now file names only go through _keyAlias compatibility lookup.
         /// </summary>
         public PlayerData GetData(string userId, string name)
         {
             if (string.IsNullOrEmpty(userId))
             {
-                // 没有 UserId 时不要往 _cache 里塞脏键(否则索引会出现空键的重复行); 也不落盘(UserId 空时 SavePlayer 直接返回)
+                // 没有 UserId 时不要往 _cache 里塞脏键(否则索引会出现空键的重复行); 也不落盘(UserId 空时 SavePlayer 直接返回) / Do not push a dirty key into _cache when there is no UserId (otherwise the index gets duplicate empty-key lines); also do not save to disk (SavePlayer returns immediately when UserId is empty)
                 return new PlayerData
                 {
                     UserId = string.Empty,
@@ -225,7 +225,7 @@ namespace Expas
             PlayerData d = FindCached(userId);
             if (d == null)
             {
-                // 按 UserId 找文件(FileOf 用 SafeId, 与老库文件名一致); 入参是旧文件名键时同样能按文件名找到
+                // 按 UserId 找文件(FileOf 用 SafeId, 与老库文件名一致); 入参是旧文件名键时同样能按文件名找到 / Find the file by UserId (FileOf uses SafeId, matching legacy file names); when the argument is an old file-name key, it can also be found by file name
                 d = LoadFromDisk(userId);
                 if (d == null)
                 {
@@ -239,7 +239,7 @@ namespace Expas
                     };
                 }
                 CachePut(d);
-                if (d.LockMigrated)   // v1.5: 旧数据 lock/longOffline → 新锁定模型, 首次访问时回写一次
+                if (d.LockMigrated)   // v1.5: 旧数据 lock/longOffline → 新锁定模型, 首次访问时回写一次 / v1.5: old lock/longOffline data → new lock model, written back once on first access
                 {
                     d.LockMigrated = false;
                     SavePlayer(d);
@@ -249,7 +249,7 @@ namespace Expas
             return d;
         }
 
-        /// <summary>查缓存: ① 真 UserId 直查 ② 旧文件名键 → 真 UserId 别名兜底(老库兼容)。</summary>
+        /// <summary>查缓存: ① 真 UserId 直查 ② 旧文件名键 → 真 UserId 别名兜底(老库兼容)。 / Look up the cache: 1) direct real UserId lookup 2) old file-name key → real UserId alias fallback (legacy compatibility).</summary>
         private PlayerData FindCached(string key)
         {
             if (_cache.TryGetValue(key, out PlayerData d)) return d;
@@ -258,19 +258,19 @@ namespace Expas
         }
 
         /// <summary>
-        /// 把一条数据挂进缓存: 键一律用真 UserId(读文件里的 userId= 行得到的), 不合法才退回入参键;
-        /// 并把"文件名主干 → 真 UserId"登记进 _keyAlias; 若历史上用旧文件名键建过缓存, 顺手挪走(保证一人一条)。
+        /// 把一条数据挂进缓存: 键一律用真 UserId(读文件里的 userId= 行得到的), 不合法才退回入参键; / Put a record into the cache: always keyed by the real UserId (read from the userId= line in the file), falling back to the input key only if invalid;
+        /// 并把"文件名主干 → 真 UserId"登记进 _keyAlias; 若历史上用旧文件名键建过缓存, 顺手挪走(保证一人一条)。 / also register "file-name stem → real UserId" in _keyAlias; if a cache entry was historically created under the old file-name key, move it away as well (one record per person).
         /// </summary>
         private void CachePut(PlayerData d)
         {
             if (d == null || string.IsNullOrEmpty(d.UserId)) return;
             _cache[d.UserId] = d;
 
-            string fileKey = SafeId(d.UserId);          // 老库键口径 = 文件名主干
+            string fileKey = SafeId(d.UserId);          // 老库键口径 = 文件名主干 / legacy key scheme = file-name stem
             if (string.Equals(fileKey, d.UserId, StringComparison.Ordinal)) return;
 
             _keyAlias[fileKey] = d.UserId;
-            // 历史脏键清理: 旧键上若挂着"另一个实例"(其自身 UserId 与键不同), 移除它, 避免索引重复
+            // 历史脏键清理: 旧键上若挂着"另一个实例"(其自身 UserId 与键不同), 移除它, 避免索引重复 / Clean up historical dirty keys: if the old key holds "another instance" (whose own UserId differs from the key), remove it to avoid duplicate index entries
             if (_cache.TryGetValue(fileKey, out PlayerData stale) && !ReferenceEquals(stale, d)
                 && !string.Equals(stale.UserId, fileKey, StringComparison.Ordinal))
                 _cache.Remove(fileKey);
@@ -300,9 +300,9 @@ namespace Expas
 
                     switch (k)
                     {
-                        // Player.UserId 形如 76561198xxx@steam, 而文件名是 SafeId(去掉 @ 等字符)后的结果,
-                        // 所以必须把文件里存的 userId 读回来, 否则 d.UserId 不是真正的 UserId,
-                        // FindOnline(d.UserId) 永远匹配不到在线玩家
+                        // Player.UserId 形如 76561198xxx@steam, 而文件名是 SafeId(去掉 @ 等字符)后的结果, / Player.UserId looks like 76561198xxx@steam, while the file name is the result of SafeId (removing characters such as @),
+                        // 所以必须把文件里存的 userId 读回来, 否则 d.UserId 不是真正的 UserId, / so the userId stored in the file must be read back; otherwise d.UserId is not the real UserId,
+                        // FindOnline(d.UserId) 永远匹配不到在线玩家 / and FindOnline(d.UserId) will never match an online player
                         case "userId": d.UserId = v; break;
                         case "name": d.Name = v; break;
                         case "level": int.TryParse(v, NumberStyles.Integer, Inv, out d.Level); break;
@@ -335,16 +335,16 @@ namespace Expas
                         case "lastKillDamage": float.TryParse(v, NumberStyles.Float, Inv, out d.LastKillDamage); break;
                         case "lastKillShare": float.TryParse(v, NumberStyles.Float, Inv, out d.LastKillShare); break;
                         case "lastKillPoints": float.TryParse(v, NumberStyles.Float, Inv, out d.LastKillPoints); break;
-                        // v1.5 击杀确认: 旧 .dat 没有这两行 → 保持字段初值 "-"
+                        // v1.5 击杀确认: 旧 .dat 没有这两行 → 保持字段初值 "-" / v1.5 kill confirmation: old .dat files lack these two lines → keep the field default "-"
                         case "lastKillRole": d.LastKillRole = v; break;
                         case "lastKillRoleKind": d.LastKillRoleKind = v; break;
-                        // v1.6 分辨率档位 / 整体缩放 / HUD 折叠(旧 .dat 没有 → 保持 -1 = 跟随服务器配置)
+                        // v1.6 分辨率档位 / 整体缩放 / HUD 折叠(旧 .dat 没有 → 保持 -1 = 跟随服务器配置) / v1.6 resolution preset / global scale / HUD collapse (old .dat lacks them → keep -1 = follow server config)
                         case "resolutionPreset": int.TryParse(v, NumberStyles.Integer, Inv, out d.ResolutionPreset); break;
                         case "globalScalePercent": int.TryParse(v, NumberStyles.Integer, Inv, out d.GlobalScalePercent); break;
                         case "hudCollapsed": int.TryParse(v, NumberStyles.Integer, Inv, out d.HudCollapsed); break;
-                        // v1.7 自定义 UI 布局(旧 .dat 没有该行 → 保持初值 "default")
+                        // v1.7 自定义 UI 布局(旧 .dat 没有该行 → 保持初值 "default") / v1.7 custom UI layout (old .dat lacks this line → keep the default "default")
                         case "hudLayout": if (!string.IsNullOrEmpty(v)) d.HudLayout = v; break;
-                        // v2.0 称号系统(旧 .dat 没有 → 保持 0/空)
+                        // v2.0 称号系统(旧 .dat 没有 → 保持 0/空) / v2.0 title system (old .dat lacks it → keep 0/empty)
                         case "titlePlan": int.TryParse(v, NumberStyles.Integer, Inv, out d.TitlePlan); break;
                         case "titleText": if (!string.IsNullOrEmpty(v)) d.TitleText = v; break;
                         case "firstSeen":
@@ -355,21 +355,21 @@ namespace Expas
                             break;
                     }
                 }
-                // v1.5 兼容旧数据文件的锁定口径(加载时一次性迁移, 首次访问时回写):
-                //   旧表: lock=0 正常 / 1 全数据锁定 / 2 自愿锁定 + 独立 longOffline 标记
-                //   新表: 0=none / 1=punishment / 2=selfban / 3=inactive
-                //   映射: 1→1(同为"什么都不记录"), 2→2(同为"伤害不涨/经验叠加"), longOffline=1 且 lock=0→3。
+                // v1.5 兼容旧数据文件的锁定口径(加载时一次性迁移, 首次访问时回写): / v1.5 compatibility with old data-file lock semantics (one-time migration on load, written back on first access):
+                //   旧表: lock=0 正常 / 1 全数据锁定 / 2 自愿锁定 + 独立 longOffline 标记 / old table: lock=0 normal / 1 lock all data / 2 voluntary lock + separate longOffline flag
+                //   新表: 0=none / 1=punishment / 2=selfban / 3=inactive / new table: 0=none / 1=punishment / 2=selfban / 3=inactive
+                //   映射: 1→1(同为"什么都不记录"), 2→2(同为"伤害不涨/经验叠加"), longOffline=1 且 lock=0→3。 / mapping: 1→1 (both "record nothing"), 2→2 (both "no damage gain / EXP accumulates"), longOffline=1 and lock=0→3.
                 if (d.LockState == LockNone && d.LongOffline)
                 {
-                    d.LockState = LockInactive;     // 旧: 只打了 🕒 标记 → 新: inactive 状态
+                    d.LockState = LockInactive;     // 旧: 只打了 🕒 标记 → 新: inactive 状态 / old: only the 🕒 marker → new: inactive state
                     d.LockMigrated = true;
                 }
                 if (d.LockState < LockNone || d.LockState > LockInactive)
                 {
-                    d.LockState = d.LongOffline ? LockInactive : LockNone;   // 越界值夹回
+                    d.LockState = d.LongOffline ? LockInactive : LockNone;   // 越界值夹回 / clamp out-of-range values back
                     d.LockMigrated = true;
                 }
-                if (d.LockState == LockInactive) d.LongOffline = true;       // 旧字段与新表同步
+                if (d.LockState == LockInactive) d.LongOffline = true;       // 旧字段与新表同步 / keep the legacy field in sync with the new table
 
                 if (d.Level < 1) d.Level = 1;
                 if (d.FirstSeen == default(DateTime)) d.FirstSeen = DateTime.UtcNow;
@@ -420,13 +420,13 @@ namespace Expas
                 sb.AppendLine("lastKillPoints=" + d.LastKillPoints.ToString("R", Inv));
                 sb.AppendLine("lastKillRole=" + (d.LastKillRole ?? "-"));
                 sb.AppendLine("lastKillRoleKind=" + (d.LastKillRoleKind ?? "-"));
-                // v1.6 分辨率档位 / 整体缩放 / HUD 折叠(-1 = 跟随服务器 config.yml)
+                // v1.6 分辨率档位 / 整体缩放 / HUD 折叠(-1 = 跟随服务器 config.yml) / v1.6 resolution preset / global scale / HUD collapse (-1 = follow server config.yml)
                 sb.AppendLine("resolutionPreset=" + d.ResolutionPreset.ToString(Inv));
                 sb.AppendLine("globalScalePercent=" + d.GlobalScalePercent.ToString(Inv));
                 sb.AppendLine("hudCollapsed=" + d.HudCollapsed.ToString(Inv));
-                // v1.7 自定义 UI 布局 key(默认 default; 只有白名单玩家可在 SSS 面板里切换)
+                // v1.7 自定义 UI 布局 key(默认 default; 只有白名单玩家可在 SSS 面板里切换) / v1.7 custom UI layout key (default "default"; only whitelisted players can switch it in the SSS panel)
                 sb.AppendLine("hudLayout=" + (string.IsNullOrEmpty(d.HudLayout) ? "default" : d.HudLayout));
-                // v2.0 称号系统(三层)
+                // v2.0 称号系统(三层) / v2.0 title system (three tiers)
                 sb.AppendLine("titlePlan=" + d.TitlePlan.ToString(Inv));
                 sb.AppendLine("titleText=" + (d.TitleText ?? string.Empty));
                 sb.AppendLine("firstSeen=" + d.FirstSeen.ToUniversalTime().ToString("o", Inv));
@@ -436,21 +436,21 @@ namespace Expas
             catch (Exception ex) { Logger.Warn(L.T($"[EXPAS] 保存 {d.UserId} 失败: {ex.Message}", $"[EXPAS] Failed to save {d.UserId}: {ex.Message}")); }
         }
 
-        /// <summary>把在线玩家的游玩时长结算进内存数据后落盘; 只写在线玩家, 不动离线记录的 LastSeen(否则 🕒 判定会失效)。</summary>
+        /// <summary>把在线玩家的游玩时长结算进内存数据后落盘; 只写在线玩家, 不动离线记录的 LastSeen(否则 🕒 判定会失效)。 / Settle online players' playtime into memory data and save to disk; only online players are written, and offline records' LastSeen is untouched (otherwise 🕒 detection breaks).</summary>
         public void FlushAll(string reason)
         {
             try
             {
                 var online = new HashSet<string>();
-                // v1.4: 在线判定改走 Player.ReadyList(L_14003 = IsDummy || (IsPlayer && IsReady)) 再滤掉人机
-                // —— 未认证连接(IsReady=false)不算在线, 避免它们的会话被错误计时/落盘
+                // v1.4: 在线判定改走 Player.ReadyList(L_14003 = IsDummy || (IsPlayer && IsReady)) 再滤掉人机 / v1.4: online detection now uses Player.ReadyList (L_14003 = IsDummy || (IsPlayer && IsReady)), then filters out dummies
+                // —— 未认证连接(IsReady=false)不算在线, 避免它们的会话被错误计时/落盘 / — unauthenticated connections (IsReady=false) do not count as online, preventing their sessions from being timed/saved incorrectly
                 foreach (Player p in Player.ReadyList.Where(p => p.IsPlayer && !p.IsDummy))
                 {
                     if (p == null || p.IsDestroyed) continue;
                     online.Add(p.UserId);
                 }
 
-                // 掉线残留的会话(Left 事件里 Player 已销毁时)直接丢弃, 不再计时
+                // 掉线残留的会话(Left 事件里 Player 已销毁时)直接丢弃, 不再计时 / Sessions left over from disconnects (Player already destroyed in the Left event) are discarded and no longer timed
                 foreach (string uid in _sessionStart.Keys.ToList())
                 {
                     if (!online.Contains(uid)) { _sessionStart.Remove(uid); continue; }
@@ -458,7 +458,7 @@ namespace Expas
                     PlayerData d = GetData(uid, null);
                     double delta = (DateTime.UtcNow - _sessionStart[uid]).TotalSeconds;
                     d.PlaySeconds += delta;
-                    AddTodayPlayTime(d, delta);          // v1.5: 今日游玩时间(跨天自动归零累加)
+                    AddTodayPlayTime(d, delta);          // v1.5: 今日游玩时间(跨天自动归零累加) / v1.5: today's playtime (auto-reset and accumulated across days)
                     d.LastSeen = DateTime.UtcNow;
                     _sessionStart[uid] = DateTime.UtcNow;
                     SavePlayer(d);
@@ -474,13 +474,13 @@ namespace Expas
             {
                 var sb = new StringBuilder();
                 sb.AppendLine(L.T("# EXPAS 玩家索引 (Steam64 | 名字 | 等级 | 总伤害 | 累计经验 | 状态 | 最后在线UTC)", "# EXPAS Player Index (Steam64 | Name | Level | Total Damage | Total EXP | Status | Last Seen UTC)"));
-                // v1.4: 缓存已统一以真 UserId 为键; 这里再兜底按 UserId 去重, 保证一个玩家只写一行(修重复行)
+                // v1.4: 缓存已统一以真 UserId 为键; 这里再兜底按 UserId 去重, 保证一个玩家只写一行(修重复行) / v1.4: the cache is now uniformly keyed by the real UserId; additionally deduplicate by UserId here to ensure one line per player (fixes duplicate lines)
                 foreach (PlayerData d in _cache.Values
                              .GroupBy(x => x.UserId, StringComparer.Ordinal)
                              .Select(g => g.First())
                              .OrderByDescending(x => x.Level).ThenBy(x => x.Name))
                 {
-                    string st = LockIcon(d.LockState);                       // [锁] / [禁] / [离] (或 emoji, 见 IconPreset)
+                    string st = LockIcon(d.LockState);                       // [锁] / [禁] / [离] (或 emoji, 见 IconPreset) / [锁] / [禁] / [离] (or emoji, see IconPreset)
                     if (string.IsNullOrEmpty(st)) st = "-";
                     if (d.LongOffline && d.LockState != LockInactive) st += LockIcon(LockInactive);
                     sb.AppendLine($"{d.UserId} | {d.Name} | {d.Level} | {d.TotalDamage:F0} | {d.TotalExp:F0} | {st} | " +
@@ -492,7 +492,7 @@ namespace Expas
         }
 
         // ========================================================================
-        // 管理操作
+        // 管理操作 / Management operations
         // ========================================================================
         public void AddExp(PlayerData d, float amount)
         {
@@ -518,19 +518,19 @@ namespace Expas
             d.Kills = 0;
             d.Deaths = 0;
             d.PlaySeconds = 0d;
-            d.Points = 0f;                    // v1.5: 一并清空积分
-            d.PlayedDays = 0;                 // v1.5 规格字段
+            d.Points = 0f;                    // v1.5: 一并清空积分 / v1.5: also clear points
+            d.PlayedDays = 0;                 // v1.5 规格字段 / v1.5 spec field
             d.TodayPlaySeconds = 0d;
             d.TodayDate = string.Empty;
             d.LockState = LockNone;
             d.LongOffline = false;
-            d.LastKillRole = "-";             // v1.5 击杀确认字段一并清空
+            d.LastKillRole = "-";             // v1.5 击杀确认字段一并清空 / v1.5: kill confirmation fields cleared as well
             d.LastKillRoleKind = "-";
-            // v1.6: 显示档位一并回到"跟随服务器配置"
+            // v1.6: 显示档位一并回到"跟随服务器配置" / v1.6: display presets also return to "follow server config"
             d.ResolutionPreset = -1;
             d.GlobalScalePercent = -1;
             d.HudCollapsed = -1;
-            d.HudLayout = "default";          // v1.7: 自定义 UI 布局回到默认布局
+            d.HudLayout = "default";          // v1.7: 自定义 UI 布局回到默认布局 / v1.7: custom UI layout returns to the default layout
             d.FirstSeen = DateTime.UtcNow;
             d.LastSeen = DateTime.UtcNow;
             SavePlayer(d);
@@ -538,21 +538,21 @@ namespace Expas
         }
 
         // ========================================================================
-        // 🕒 长期未上线标记
+        // 🕒 长期未上线标记 / 🕒 Long-offline marker
         // ========================================================================
         private void MarkLongOffline(PlayerData d)
         {
             if (d == null) return;
-            // v1.5: 玩家回来了 → 自动把 inactive 清回 none(🕒 摘掉); punishment/selfban 不受影响
+            // v1.5: 玩家回来了 → 自动把 inactive 清回 none(🕒 摘掉); punishment/selfban 不受影响 / v1.5: player is back → automatically clear inactive back to none (remove 🕒); punishment/selfban unaffected
             if (d.LockState == LockInactive)
             {
                 d.LockState = LockNone;
                 Logger.Info(L.T($"[EXPAS] {d.Name}({d.UserId}) 已重新上线, inactive(🕒) 自动清回 none", $"[EXPAS] {d.Name}({d.UserId}) is back online, inactive (🕒) automatically cleared to none"));
             }
-            d.LongOffline = false;   // 人回来了就摘掉
+            d.LongOffline = false;   // 人回来了就摘掉 / remove it once the player is back
         }
 
-        /// <summary>扫描所有玩家文件, 超过配置天数未上线就自动打上 🕒 并写盘。</summary>
+        /// <summary>扫描所有玩家文件, 超过配置天数未上线就自动打上 🕒 并写盘。 / Scan all player files; automatically add 🕒 and save to disk when offline longer than the configured days.</summary>
         public void MarkLongOfflinePass()
         {
             try
@@ -564,13 +564,13 @@ namespace Expas
 
                 foreach (string f in Directory.GetFiles(PlayerDir, "*.dat"))
                 {
-                    string uid = Path.GetFileNameWithoutExtension(f);   // 旧键口径(文件名主干)
-                    PlayerData d = GetDataById(uid);                    // v1.4: 经 _keyAlias 映射到真 UserId, 不再新建重复记录
+                    string uid = Path.GetFileNameWithoutExtension(f);   // 旧键口径(文件名主干) / legacy key scheme (file-name stem)
+                    PlayerData d = GetDataById(uid);                    // v1.4: 经 _keyAlias 映射到真 UserId, 不再新建重复记录 / v1.4: mapped to the real UserId via _keyAlias, no more duplicate records
                     if (d == null) continue;
 
                     bool online = FindOnline(d.UserId) != null;
                     bool shouldMark = !online && d.LastSeen.ToUniversalTime() < limit;
-                    // v1.5: 自动置位 inactive(🕒); 只在玩家当前是 none 时改动, 不覆盖 punishment/selfban
+                    // v1.5: 自动置位 inactive(🕒); 只在玩家当前是 none 时改动, 不覆盖 punishment/selfban / v1.5: automatically set inactive (🕒); only changes when the player is currently none, never overrides punishment/selfban
                     if (shouldMark && d.LockState == LockNone)
                     {
                         d.LockState = LockInactive;
@@ -585,12 +585,12 @@ namespace Expas
         }
 
         /// <summary>
-        /// 启动时扫描数据库目录, 把磁盘数据读进缓存并刷新索引; 同时打印一次规模。
-        /// v1.4 修正(修 index.txt 重复行): 以前这里"用文件名当 key 读一遍就丢掉", 缓存要等玩家上线
-        /// 才慢慢建起来, 而且 MarkLongOfflinePass 用文件名调 GetDataById → 同一个人被建成两个 key
-        /// (旧库文件名 = SafeId 去 @ 后的结果), index.txt 就每人重复两行。
-        /// 现在统一走 CachePut: **真 UserId(读文件里的 userId= 行)为键**, 旧文件名登记进 _keyAlias
-        /// —— 仍能按文件名找到文件/记录(兼容), 但同一个人只占一条。
+        /// 启动时扫描数据库目录, 把磁盘数据读进缓存并刷新索引; 同时打印一次规模。 / Scan the database directory at startup, load disk data into the cache and refresh the index; also print the scale once.
+        /// v1.4 修正(修 index.txt 重复行): 以前这里"用文件名当 key 读一遍就丢掉", 缓存要等玩家上线 / v1.4 fix (duplicate index.txt lines): previously this "read each file once with the file name as key and then discarded it", so the cache was built slowly
+        /// 才慢慢建起来, 而且 MarkLongOfflinePass 用文件名调 GetDataById → 同一个人被建成两个 key / as players came online, and MarkLongOfflinePass called GetDataById with the file name → the same person was created under two keys
+        /// (旧库文件名 = SafeId 去 @ 后的结果), index.txt 就每人重复两行。 / (legacy file name = result of SafeId stripping @), so index.txt had two duplicate lines per person.
+        /// 现在统一走 CachePut: **真 UserId(读文件里的 userId= 行)为键**, 旧文件名登记进 _keyAlias / Now everything goes through CachePut: **keyed by the real UserId (read from the userId= line in the file)**, with old file names registered in _keyAlias
+        /// —— 仍能按文件名找到文件/记录(兼容), 但同一个人只占一条。 / — files/records can still be found by file name (compatibility), but the same person occupies only one entry.
         /// </summary>
         private void LoadOrCreateIndex()
         {
@@ -599,15 +599,15 @@ namespace Expas
                 int n = 0, merged = 0;
                 foreach (string f in Directory.GetFiles(PlayerDir, "*.dat"))
                 {
-                    string fileKey = Path.GetFileNameWithoutExtension(f);   // 旧键口径 = 文件名主干
-                    if (FindCached(fileKey) != null) { merged++; continue; }  // 同一 UserId 的另一个文件名 → 合并, 不重复读
-                    PlayerData d = LoadFromDisk(fileKey);                    // 按文件名找文件(兼容旧文件名)
+                    string fileKey = Path.GetFileNameWithoutExtension(f);   // 旧键口径 = 文件名主干 / legacy key scheme = file-name stem
+                    if (FindCached(fileKey) != null) { merged++; continue; }  // 同一 UserId 的另一个文件名 → 合并, 不重复读 / another file name for the same UserId → merge, do not read again
+                    PlayerData d = LoadFromDisk(fileKey);                    // 按文件名找文件(兼容旧文件名) / find the file by file name (legacy file-name compatible)
                     if (d == null) continue;
-                    _keyAlias[fileKey] = d.UserId;   // 旧文件名 → 真 UserId(按文件名也能找到这条记录)
-                    CachePut(d);                     // 统一挂到真 UserId 键
+                    _keyAlias[fileKey] = d.UserId;   // 旧文件名 → 真 UserId(按文件名也能找到这条记录) / old file name → real UserId (this record can also be found by file name)
+                    CachePut(d);                     // 统一挂到真 UserId 键 / uniformly attach to the real UserId key
                     n++;
                 }
-                WriteIndex();   // 立刻按真 UserId 重写一次索引 —— 老库里同一人两行的问题启动就修掉
+                WriteIndex();   // 立刻按真 UserId 重写一次索引 —— 老库里同一人两行的问题启动就修掉 / immediately rewrite the index by real UserId — fixes the two-lines-per-person issue in legacy databases at startup
                 Logger.Info(L.T(
                     $"[EXPAS] 数据库: {PlayerDir} (已有 {n} 条玩家记录" +
                     (merged > 0 ? $", 合并了 {merged} 个同 UserId 的重复文件名" : string.Empty) + ")",
@@ -618,7 +618,7 @@ namespace Expas
         }
 
         // ========================================================================
-        // 时间 / 文案
+        // 时间 / 文案 / Time / text
         // ========================================================================
         private static readonly Dictionary<string, int> TimeZoneMap = new Dictionary<string, int>
         {
@@ -634,7 +634,7 @@ namespace Expas
             { "澳洲", 10 }, { "悉尼", 10 }, { "新西兰", 12 }
         };
 
-        /// <summary>解析配置里的时区: 支持 "GMT+8" / "+8" / "8" / 国家名; 默认 +8。</summary>
+        /// <summary>解析配置里的时区: 支持 "GMT+8" / "+8" / "8" / 国家名; 默认 +8。 / Parse the time zone from the config: supports "GMT+8" / "+8" / "8" / country names; default +8.</summary>
         public int GetOffsetHours()
         {
             string s = (Config.TimeZone ?? string.Empty).Trim();
@@ -668,7 +668,7 @@ namespace Expas
             return t.ToString("HH:mm:ss", Inv);
         }
 
-        /// <summary>以每天 12:00 为新一天分界, 返回自 from 起算的"第几天"(从1开始)。</summary>
+        /// <summary>以每天 12:00 为新一天分界, 返回自 from 起算的"第几天"(从1开始)。 / Use 12:00 each day as the new-day boundary; return the "day number" since from (starting at 1).</summary>
         public static int DaysSince(DateTime fromUtc, DateTime nowUtc)
         {
             DateTime a = fromUtc.ToUniversalTime().Date.AddHours(12);
@@ -693,15 +693,15 @@ namespace Expas
         }
 
         // ========================================================================
-        // v1.5 今日游玩时间(today_play_time) —— 跨天自动归零累加
+        // v1.5 今日游玩时间(today_play_time) —— 跨天自动归零累加 / v1.5 today's playtime (today_play_time) — automatically resets and accumulates across days
         // ========================================================================
-        /// <summary>"今日"的日期键(yyyy-MM-dd), 按配置的时区计算 —— 与 HUD 显示的当地时间一致。</summary>
+        /// <summary>"今日"的日期键(yyyy-MM-dd), 按配置的时区计算 —— 与 HUD 显示的当地时间一致。 / The "today" date key (yyyy-MM-dd), calculated in the configured time zone — consistent with the local time shown in the HUD.</summary>
         public string TodayKey()
             => DateTime.UtcNow.AddHours(GetOffsetHours()).ToString("yyyy-MM-dd", Inv);
 
         /// <summary>
-        /// 累加"今日游玩时间"(秒); TodayDate 与当前日期键不一致(跨天)时先归零再累加。
-        /// 由 FlushAll / OnLeft 在结算会话时长时调用。
+        /// 累加"今日游玩时间"(秒); TodayDate 与当前日期键不一致(跨天)时先归零再累加。 / Accumulate "today's playtime" in seconds; if TodayDate differs from the current date key (new day), reset to zero before accumulating.
+        /// 由 FlushAll / OnLeft 在结算会话时长时调用。 / Called by FlushAll / OnLeft when settling session duration.
         /// </summary>
         public void AddTodayPlayTime(PlayerData d, double deltaSeconds)
         {
@@ -710,12 +710,12 @@ namespace Expas
             if (!string.Equals(d.TodayDate, today, StringComparison.Ordinal))
             {
                 d.TodayDate = today;
-                d.TodayPlaySeconds = 0d;      // 跨天 → 今日游玩时间归零重新累计
+                d.TodayPlaySeconds = 0d;      // 跨天 → 今日游玩时间归零重新累计 / new day → today's playtime resets and starts accumulating again
             }
             d.TodayPlaySeconds += deltaSeconds;
         }
 
-        /// <summary>读"今日游玩时间"(秒); 已跨天则按 0 返回(纯读取, 不写盘), 用于 HUD/面板显示。</summary>
+        /// <summary>读"今日游玩时间"(秒); 已跨天则按 0 返回(纯读取, 不写盘), 用于 HUD/面板显示。 / Read "today's playtime" in seconds; if the day has rolled over, return 0 (read-only, no disk write), for HUD/panel display.</summary>
         public double GetTodayPlaySeconds(PlayerData d)
         {
             if (d == null) return 0d;

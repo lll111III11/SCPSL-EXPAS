@@ -1,7 +1,7 @@
 // ============================================================================
-//  EXPAS —— config.yml 注释中英对照表
-//    ExpasLang.LocalizeConfigFile() 在保存配置后按当前语言回写注释。
-//    键 = [Description] 原文(中文)，值 = English。
+//  EXPAS —— config.yml 注释中英对照表 / EXPAS — config.yml comment Chinese-English lookup table
+//    ExpasLang.LocalizeConfigFile() 在保存配置后按当前语言回写注释。 / ExpasLang.LocalizeConfigFile() writes comments back in the current language after saving the config.
+//    键 = [Description] 原文(中文)，值 = English。 / Key = original [Description] text (Chinese), value = English.
 // ============================================================================
 using System.Collections.Generic;
 
