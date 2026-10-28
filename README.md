@@ -3,25 +3,29 @@
 > **Experience, eXtended Plugins, Audio, and Status System**
 > SCP:SL（SCP Secret Laboratory）LabAPI 插件
 
-[![状态](https://img.shields.io/badge/status-Beta-orange)](#-版本状态beta)
+[![状态](https://img.shields.io/badge/status-Beta-orange)](#版本状态beta-version-status-beta)
 [![平台](https://img.shields.io/badge/platform-SCP%3ASL%20LabAPI-blue)](#-环境要求)
 [![授权](https://img.shields.io/badge/license-CC0--1.0-lightgrey)](LICENSE)
 
 ---
 
-## 版本状态：Beta
+## 版本状态：Beta (Version Status: Beta)
 
 当前版本 **v2.0.0-beta**。
+(Current version: **v2.0.0-beta**.)
 
 Beta 的含义是：**功能已经可以稳定使用，但仍在持续修问题**——绝大部分场景没问题，但可能存在尚未覆盖的边界情况。欢迎在使用中反馈，升级时建议关注版本变更。
+(Beta means **the features are stable enough to use, but fixes are still ongoing** — most scenarios are fine, while some edge cases may not be covered yet. Feedback is welcome; please watch the changelog when upgrading.)
 
 ---
 
-## 简介
+## 简介 (Introduction)
 
 EXPAS 是一套面向 SCP:SL LabAPI 服务端的综合插件，把**经验等级、称号、音频播放、状态面板**四块能力做进同一个插件里，并通过 SSS 面板（`ESC → 设置 → 服务器设置 → EXPAS`）把界面的自定义权交给每个玩家自己。
+(EXPAS is an all-in-one plugin for SCP:SL LabAPI servers that combines **XP & levels, titles, audio playback and a status panel** in a single plugin. Through the SSS panel (`ESC → Settings → Server Settings → EXPAS`), every player can customize their own UI.)
 
 所有 EXPAS 指令**只**注册在 **RA 远程管理面板** 与 **服务器控制台**；玩家在游戏内不能执行任何 EXPAS 指令。
+(All EXPAS commands are registered **only** in the **RA remote admin panel** and the **server console**; players cannot run any EXPAS command in-game.)
 
 ---
 
